@@ -1,0 +1,986 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="default">
+    <meta name="apple-mobile-web-app-title" content="Transcripts">
+    <meta name="theme-color" content="#4F46E5">
+    <title>Transcript Tracker</title>
+    <link rel="manifest" href="manifest.json">
+    <style>
+        *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+        :root {
+            --primary: #4F46E5;
+            --primary-dark: #3730A3;
+            --success: #10B981;
+            --warning: #F59E0B;
+            --danger: #EF4444;
+            --bg: #F1F5F9;
+            --card: #FFFFFF;
+            --text: #1E293B;
+            --text-muted: #64748B;
+            --border: #E2E8F0;
+            --radius: 8px;
+            --shadow: 0 1px 3px rgba(0,0,0,0.1), 0 1px 2px rgba(0,0,0,0.06);
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: var(--bg);
+            color: var(--text);
+            min-height: 100vh;
+            font-size: 14px;
+        }
+
+        /* ---- SETUP SCREEN ---- */
+        #setup-screen {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            min-height: 100vh;
+            padding: 24px;
+            background: linear-gradient(135deg, #4F46E5 0%, #7C3AED 100%);
+        }
+        .setup-card {
+            background: white;
+            border-radius: 16px;
+            padding: 32px;
+            width: 100%;
+            max-width: 420px;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.2);
+        }
+        .setup-logo { font-size: 40px; margin-bottom: 12px; }
+        .setup-card h1 { font-size: 22px; margin-bottom: 6px; color: var(--text); }
+        .setup-card p { color: var(--text-muted); margin-bottom: 24px; font-size: 14px; line-height: 1.5; }
+        .setup-hint { margin-top: 14px; font-size: 12px; color: var(--text-muted); text-align: center; }
+        .setup-hint a { color: var(--primary); text-decoration: none; }
+
+        /* ---- HEADER ---- */
+        #header {
+            background: var(--primary);
+            color: white;
+            padding: 12px 16px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            position: sticky;
+            top: 0;
+            z-index: 100;
+            box-shadow: 0 2px 8px rgba(79,70,229,0.4);
+        }
+        #header h1 { font-size: 17px; font-weight: 700; letter-spacing: -0.3px; }
+        .header-actions { display: flex; gap: 8px; align-items: center; }
+        #header-sync { font-size: 11px; opacity: 0.75; }
+
+        /* ---- STATS ---- */
+        #stats-bar {
+            display: flex;
+            gap: 8px;
+            padding: 12px 16px 8px;
+            overflow-x: auto;
+            -webkit-overflow-scrolling: touch;
+        }
+        #stats-bar::-webkit-scrollbar { display: none; }
+        .stat-chip {
+            background: var(--card);
+            border-radius: 10px;
+            padding: 8px 14px;
+            white-space: nowrap;
+            box-shadow: var(--shadow);
+            border: 1px solid var(--border);
+            text-align: center;
+            min-width: 64px;
+        }
+        .stat-chip .stat-num { font-size: 20px; font-weight: 700; display: block; line-height: 1; }
+        .stat-chip .stat-lbl { font-size: 10px; text-transform: uppercase; letter-spacing: 0.05em; color: var(--text-muted); margin-top: 2px; display: block; }
+
+        /* ---- SEARCH & FILTERS ---- */
+        #search-bar { padding: 4px 16px 6px; }
+        #search-input {
+            width: 100%;
+            padding: 8px 14px;
+            border: 1px solid var(--border);
+            border-radius: 20px;
+            font-size: 14px;
+            background: white;
+            font-family: inherit;
+        }
+        #search-input:focus { outline: none; border-color: var(--primary); }
+
+        #filter-tabs {
+            display: flex;
+            gap: 4px;
+            padding: 0 16px 8px;
+            overflow-x: auto;
+            -webkit-overflow-scrolling: touch;
+        }
+        #filter-tabs::-webkit-scrollbar { display: none; }
+        .filter-tab {
+            padding: 5px 13px;
+            border-radius: 16px;
+            font-size: 12px;
+            font-weight: 500;
+            cursor: pointer;
+            border: 1px solid var(--border);
+            background: white;
+            white-space: nowrap;
+            font-family: inherit;
+            transition: all 0.12s;
+        }
+        .filter-tab.active { background: var(--primary); color: white; border-color: var(--primary); }
+
+        /* ---- SYNC INFO ---- */
+        #sync-info {
+            padding: 2px 16px 8px;
+            font-size: 11px;
+            color: var(--text-muted);
+            display: flex;
+            align-items: center;
+            gap: 5px;
+        }
+        .sync-dot { width: 6px; height: 6px; border-radius: 50%; background: var(--success); flex-shrink: 0; }
+
+        /* ---- TABLE ---- */
+        .table-wrap {
+            overflow-x: auto;
+            padding: 0 16px 80px;
+            -webkit-overflow-scrolling: touch;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            background: var(--card);
+            border-radius: var(--radius);
+            overflow: hidden;
+            box-shadow: var(--shadow);
+            min-width: 580px;
+        }
+        th {
+            background: #F8FAFC;
+            padding: 9px 10px;
+            text-align: left;
+            font-weight: 600;
+            font-size: 10px;
+            text-transform: uppercase;
+            letter-spacing: 0.06em;
+            color: var(--text-muted);
+            border-bottom: 1px solid var(--border);
+            white-space: nowrap;
+            user-select: none;
+            cursor: pointer;
+        }
+        th:hover { background: #F0F4F8; }
+        th.sorted-asc::after { content: ' ↑'; }
+        th.sorted-desc::after { content: ' ↓'; }
+        td {
+            padding: 9px 10px;
+            border-bottom: 1px solid #F1F5F9;
+            vertical-align: middle;
+        }
+        tr:last-child td { border-bottom: none; }
+        tr:hover td { background: #FAFBFD; }
+        tr.overdue td:nth-child(3) { color: var(--danger); font-weight: 600; }
+
+        .last-name { font-weight: 600; }
+        .first-name { color: var(--text-muted); font-size: 12px; }
+        .due-soon { color: var(--warning); font-weight: 600; }
+
+        /* ---- WAYPOINTS IN TABLE ---- */
+        .waypoint {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            width: 24px;
+            height: 24px;
+            border-radius: 50%;
+            border: 2px solid #CBD5E1;
+            cursor: pointer;
+            transition: all 0.12s;
+            font-size: 12px;
+            font-weight: 700;
+            color: transparent;
+        }
+        .waypoint:hover { border-color: var(--success); background: #ECFDF5; }
+        .waypoint.done {
+            background: var(--success);
+            border-color: var(--success);
+            color: white;
+        }
+        .waypoint.done::before { content: '✓'; }
+
+        /* ---- FORMS ---- */
+        .form-group { margin-bottom: 14px; }
+        label {
+            display: block;
+            font-size: 11px;
+            font-weight: 700;
+            margin-bottom: 5px;
+            color: var(--text-muted);
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+        }
+        input[type=text], input[type=url], input[type=date], input[type=number],
+        input[type=search], select, textarea {
+            width: 100%;
+            padding: 10px 12px;
+            border: 1px solid var(--border);
+            border-radius: var(--radius);
+            font-size: 14px;
+            font-family: inherit;
+            background: white;
+            transition: border-color 0.12s;
+            -webkit-appearance: none;
+        }
+        input:focus, select:focus, textarea:focus {
+            outline: none;
+            border-color: var(--primary);
+            box-shadow: 0 0 0 3px rgba(79,70,229,0.1);
+        }
+        .form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+
+        /* ---- BUTTONS ---- */
+        .btn {
+            padding: 10px 18px;
+            border-radius: var(--radius);
+            font-size: 14px;
+            font-weight: 600;
+            cursor: pointer;
+            border: none;
+            transition: all 0.12s;
+            font-family: inherit;
+        }
+        .btn-primary { background: var(--primary); color: white; }
+        .btn-primary:hover { background: var(--primary-dark); }
+        .btn-primary:active { transform: scale(0.98); }
+        .btn-secondary { background: var(--bg); color: var(--text); border: 1px solid var(--border); }
+        .btn-danger { background: #FEF2F2; color: var(--danger); border: 1px solid #FECACA; }
+        .btn-icon {
+            padding: 6px 8px;
+            background: none;
+            border: none;
+            cursor: pointer;
+            color: var(--text-muted);
+            border-radius: 6px;
+            font-size: 15px;
+            transition: background 0.12s;
+        }
+        .btn-icon:hover { background: var(--bg); }
+        .btn-header {
+            background: rgba(255,255,255,0.18);
+            color: white;
+            border: none;
+            padding: 7px 14px;
+            border-radius: var(--radius);
+            font-size: 13px;
+            font-weight: 600;
+            cursor: pointer;
+            font-family: inherit;
+            transition: background 0.12s;
+        }
+        .btn-header:hover { background: rgba(255,255,255,0.28); }
+
+        /* ---- MODAL ---- */
+        .modal-overlay {
+            position: fixed;
+            inset: 0;
+            background: rgba(0,0,0,0.45);
+            display: flex;
+            align-items: flex-end;
+            justify-content: center;
+            z-index: 1000;
+            backdrop-filter: blur(2px);
+        }
+        @media (min-width: 600px) {
+            .modal-overlay { align-items: center; padding: 24px; }
+        }
+        .modal {
+            background: white;
+            border-radius: 20px 20px 0 0;
+            width: 100%;
+            max-height: 92vh;
+            overflow-y: auto;
+            padding: 20px 20px 32px;
+            -webkit-overflow-scrolling: touch;
+        }
+        @media (min-width: 600px) {
+            .modal { border-radius: 14px; max-width: 500px; padding: 24px; }
+        }
+        .modal-handle {
+            width: 36px; height: 4px;
+            background: var(--border);
+            border-radius: 2px;
+            margin: 0 auto 16px;
+        }
+        @media (min-width: 600px) { .modal-handle { display: none; } }
+        .modal-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 18px;
+        }
+        .modal-header h2 { font-size: 18px; font-weight: 700; }
+        .modal-footer {
+            display: flex;
+            gap: 8px;
+            justify-content: flex-end;
+            margin-top: 18px;
+            padding-top: 16px;
+            border-top: 1px solid var(--border);
+        }
+
+        /* ---- WAYPOINTS IN MODAL ---- */
+        .waypoints-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; }
+        .waypoint-toggle {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 6px;
+            padding: 10px 6px;
+            border: 2px solid var(--border);
+            border-radius: var(--radius);
+            cursor: pointer;
+            transition: all 0.12s;
+            user-select: none;
+            background: white;
+        }
+        .waypoint-toggle:hover { border-color: #A7F3D0; background: #F0FDF4; }
+        .waypoint-toggle.active { border-color: var(--success); background: #ECFDF5; }
+        .wp-icon {
+            width: 28px; height: 28px;
+            border-radius: 50%;
+            border: 2px solid var(--border);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 13px;
+            font-weight: 700;
+            color: transparent;
+        }
+        .waypoint-toggle.active .wp-icon {
+            background: var(--success);
+            border-color: var(--success);
+            color: white;
+        }
+        .waypoint-toggle.active .wp-icon::before { content: '✓'; }
+        .wp-label { font-size: 11px; font-weight: 700; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.04em; }
+        .waypoint-toggle.active .wp-label { color: #059669; }
+
+        /* ---- EMPTY & LOADING ---- */
+        .empty-state, .loading-state {
+            text-align: center;
+            padding: 48px 24px;
+            color: var(--text-muted);
+        }
+        .empty-state .emoji { font-size: 36px; display: block; margin-bottom: 12px; }
+        .empty-state p { font-size: 14px; }
+
+        /* ---- UTILITIES ---- */
+        .hidden { display: none !important; }
+        ::-webkit-scrollbar { width: 4px; height: 4px; }
+        ::-webkit-scrollbar-track { background: transparent; }
+        ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 2px; }
+    </style>
+</head>
+<body>
+
+<!-- ============================================================ -->
+<!-- SETUP SCREEN -->
+<!-- ============================================================ -->
+<div id="setup-screen" class="hidden">
+    <div class="setup-card">
+        <div class="setup-logo">📋</div>
+        <h1>Transcript Tracker</h1>
+        <p>Connect your Supabase database to get started. You'll only need to do this once per device.</p>
+
+        <div class="form-group">
+            <label>Supabase Project URL</label>
+            <input type="url" id="setup-url" placeholder="https://xxxxxxxxxxxx.supabase.co" autocomplete="off" autocorrect="off" spellcheck="false">
+        </div>
+        <div class="form-group">
+            <label>Supabase Anon Key</label>
+            <input type="text" id="setup-key" placeholder="eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..." autocomplete="off" autocorrect="off" spellcheck="false">
+        </div>
+        <button class="btn btn-primary" style="width:100%; padding:12px" onclick="saveSetup()">Connect &amp; Open App</button>
+
+        <p class="setup-hint">Find these in Supabase: <strong>Settings → API</strong></p>
+    </div>
+</div>
+
+<!-- ============================================================ -->
+<!-- MAIN APP -->
+<!-- ============================================================ -->
+<div id="app" class="hidden">
+
+    <div id="header">
+        <h1>📋 Transcript Tracker</h1>
+        <div class="header-actions">
+            <span id="header-sync"></span>
+            <button class="btn-header" onclick="showAddModal()">+ New</button>
+        </div>
+    </div>
+
+    <div id="stats-bar">
+        <!-- Populated by JS -->
+    </div>
+
+    <div id="search-bar">
+        <input type="search" id="search-input" placeholder="🔍  Search by name, agency, job ID..." oninput="applyFilters()">
+    </div>
+
+    <div id="filter-tabs">
+        <button class="filter-tab active" onclick="setFilter('all', this)">All</button>
+        <button class="filter-tab" onclick="setFilter('pending', this)">Pending</button>
+        <button class="filter-tab" onclick="setFilter('scoped', this)">Scoped</button>
+        <button class="filter-tab" onclick="setFilter('proofed', this)">Proofed</button>
+        <button class="filter-tab" onclick="setFilter('final', this)">Final</button>
+        <button class="filter-tab" onclick="setFilter('unbilled', this)">Unbilled</button>
+    </div>
+
+    <div id="sync-info">
+        <div class="sync-dot"></div>
+        <span id="last-sync-text">Checking sync status...</span>
+    </div>
+
+    <div class="table-wrap">
+        <table>
+            <thead>
+                <tr>
+                    <th onclick="sortBy('last_name', this)">Last Name</th>
+                    <th onclick="sortBy('date_taken', this)">Date Taken</th>
+                    <th onclick="sortBy('due_date', this)">Due Date</th>
+                    <th onclick="sortBy('pages', this)">Pgs</th>
+                    <th onclick="sortBy('agency', this)">Agency</th>
+                    <th title="Scoped">Sc</th>
+                    <th title="Proofed">Pr</th>
+                    <th title="Final">Fn</th>
+                    <th title="Billed">Bi</th>
+                    <th></th>
+                </tr>
+            </thead>
+            <tbody id="table-body">
+                <tr><td colspan="10" class="loading-state">Loading transcripts...</td></tr>
+            </tbody>
+        </table>
+    </div>
+
+</div><!-- #app -->
+
+<!-- ============================================================ -->
+<!-- ADD / EDIT MODAL -->
+<!-- ============================================================ -->
+<div id="modal-overlay" class="modal-overlay hidden" onclick="handleOverlayClick(event)">
+    <div class="modal">
+        <div class="modal-handle"></div>
+        <div class="modal-header">
+            <h2 id="modal-title">Add Transcript</h2>
+            <button class="btn-icon" onclick="closeModal()" style="font-size:22px; line-height:1">×</button>
+        </div>
+
+        <input type="hidden" id="modal-id">
+
+        <div class="form-row">
+            <div class="form-group">
+                <label>Last Name *</label>
+                <input type="text" id="modal-last-name" placeholder="Smith" autocapitalize="words">
+            </div>
+            <div class="form-group">
+                <label>First Name</label>
+                <input type="text" id="modal-first-name" placeholder="John" autocapitalize="words">
+            </div>
+        </div>
+
+        <div class="form-row">
+            <div class="form-group">
+                <label>Date Taken</label>
+                <input type="date" id="modal-date-taken">
+            </div>
+            <div class="form-group">
+                <label>Due Date</label>
+                <input type="date" id="modal-due-date">
+            </div>
+        </div>
+
+        <div class="form-row">
+            <div class="form-group">
+                <label>Pages</label>
+                <input type="number" id="modal-pages" placeholder="0" min="0" inputmode="numeric">
+            </div>
+            <div class="form-group">
+                <label>Agency</label>
+                <input type="text" id="modal-agency" placeholder="MRGI, EWU...">
+            </div>
+        </div>
+
+        <div class="form-group">
+            <label>Notes</label>
+            <textarea id="modal-notes" rows="2" placeholder="Optional notes..."></textarea>
+        </div>
+
+        <div class="form-group">
+            <label>Waypoints</label>
+            <div class="waypoints-grid">
+                <div class="waypoint-toggle" id="wp-scoped" onclick="toggleModalWaypoint('scoped')">
+                    <div class="wp-icon"></div>
+                    <div class="wp-label">Scoped</div>
+                </div>
+                <div class="waypoint-toggle" id="wp-proofed" onclick="toggleModalWaypoint('proofed')">
+                    <div class="wp-icon"></div>
+                    <div class="wp-label">Proofed</div>
+                </div>
+                <div class="waypoint-toggle" id="wp-final" onclick="toggleModalWaypoint('final')">
+                    <div class="wp-icon"></div>
+                    <div class="wp-label">Final</div>
+                </div>
+                <div class="waypoint-toggle" id="wp-billed" onclick="toggleModalWaypoint('billed')">
+                    <div class="wp-icon"></div>
+                    <div class="wp-label">Billed</div>
+                </div>
+            </div>
+        </div>
+
+        <div class="modal-footer">
+            <button id="delete-btn" class="btn btn-danger hidden" onclick="deleteTranscript()">Delete</button>
+            <div style="flex:1"></div>
+            <button class="btn btn-secondary" onclick="closeModal()">Cancel</button>
+            <button class="btn btn-primary" onclick="saveTranscript()">Save</button>
+        </div>
+    </div>
+</div>
+
+<!-- ============================================================ -->
+<!-- SUPABASE SDK + APP LOGIC -->
+<!-- ============================================================ -->
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script>
+// ============================================================
+// STATE
+// ============================================================
+let supabaseClient = null;
+let allTranscripts = [];
+let currentFilter = 'all';
+let editingId = null;
+let modalWaypoints = { scoped: false, proofed: false, final: false, billed: false };
+let sortField = 'date_taken';
+let sortDir = 'desc';
+
+// ============================================================
+// INIT & SETUP
+// ============================================================
+function init() {
+    const url = localStorage.getItem('tt_sb_url');
+    const key = localStorage.getItem('tt_sb_key');
+
+    if (!url || !key) {
+        document.getElementById('setup-screen').classList.remove('hidden');
+        return;
+    }
+
+    connectSupabase(url, key);
+}
+
+function connectSupabase(url, key) {
+    supabaseClient = window.supabase.createClient(url, key);
+    document.getElementById('setup-screen').classList.add('hidden');
+    document.getElementById('app').classList.remove('hidden');
+    loadTranscripts();
+    loadSyncInfo();
+    subscribeToChanges();
+}
+
+function saveSetup() {
+    const url = document.getElementById('setup-url').value.trim();
+    const key = document.getElementById('setup-key').value.trim();
+
+    if (!url || !key) {
+        alert('Please enter both the Project URL and Anon Key.');
+        return;
+    }
+    if (!url.includes('supabase.co') && !url.includes('supabase.io')) {
+        alert('That doesn\'t look like a Supabase URL. It should be: https://xxxx.supabase.co');
+        return;
+    }
+
+    localStorage.setItem('tt_sb_url', url);
+    localStorage.setItem('tt_sb_key', key);
+    connectSupabase(url, key);
+}
+
+// ============================================================
+// DATA LOADING
+// ============================================================
+async function loadTranscripts() {
+    document.getElementById('table-body').innerHTML =
+        '<tr><td colspan="10" class="loading-state">Loading...</td></tr>';
+
+    const { data, error } = await supabaseClient
+        .from('transcripts')
+        .select('*')
+        .order(sortField, { ascending: sortDir === 'asc' });
+
+    if (error) {
+        console.error('Load error:', error);
+        document.getElementById('table-body').innerHTML =
+            `<tr><td colspan="10" class="empty-state"><span class="emoji">⚠️</span><p>Error loading data.<br><small>${error.message}</small></p></td></tr>`;
+        return;
+    }
+
+    allTranscripts = data || [];
+    renderStats();
+    applyFilters();
+}
+
+async function loadSyncInfo() {
+    try {
+        const { data } = await supabaseClient
+            .from('sync_log')
+            .select('last_sync')
+            .eq('id', 1)
+            .single();
+
+        const el = document.getElementById('last-sync-text');
+        const headerEl = document.getElementById('header-sync');
+
+        if (data && data.last_sync) {
+            const d = new Date(data.last_sync);
+            const timeStr = d.toLocaleDateString('en-US', {month:'short', day:'numeric'}) + ' ' +
+                            d.toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'});
+            el.textContent = `Last Slack sync: ${timeStr}`;
+            headerEl.textContent = `Synced ${timeStr}`;
+        } else {
+            el.textContent = 'Slack sync not yet run';
+            headerEl.textContent = '';
+        }
+    } catch (e) {
+        document.getElementById('last-sync-text').textContent = 'Sync status unavailable';
+    }
+}
+
+function subscribeToChanges() {
+    supabaseClient
+        .channel('realtime-changes')
+        .on('postgres_changes', { event: '*', schema: 'public', table: 'transcripts' }, () => {
+            loadTranscripts();
+        })
+        .on('postgres_changes', { event: '*', schema: 'public', table: 'sync_log' }, () => {
+            loadSyncInfo();
+        })
+        .subscribe();
+}
+
+// ============================================================
+// RENDERING
+// ============================================================
+function renderStats() {
+    const t = allTranscripts;
+    const total = t.length;
+    const scoped = t.filter(x => x.scoped).length;
+    const proofed = t.filter(x => x.proofed).length;
+    const final_ = t.filter(x => x.final).length;
+    const unbilled = t.filter(x => x.final && !x.billed).length;
+
+    document.getElementById('stats-bar').innerHTML = `
+        <div class="stat-chip">
+            <span class="stat-num">${total}</span>
+            <span class="stat-lbl">Total</span>
+        </div>
+        <div class="stat-chip">
+            <span class="stat-num">${scoped}</span>
+            <span class="stat-lbl">Scoped</span>
+        </div>
+        <div class="stat-chip">
+            <span class="stat-num">${proofed}</span>
+            <span class="stat-lbl">Proofed</span>
+        </div>
+        <div class="stat-chip">
+            <span class="stat-num">${final_}</span>
+            <span class="stat-lbl">Final</span>
+        </div>
+        <div class="stat-chip" style="${unbilled > 0 ? 'border-color:#FCD34D' : ''}">
+            <span class="stat-num" style="${unbilled > 0 ? 'color:#D97706' : ''}">${unbilled}</span>
+            <span class="stat-lbl">Unbilled</span>
+        </div>
+    `;
+}
+
+function applyFilters() {
+    const search = document.getElementById('search-input').value.toLowerCase().trim();
+
+    let filtered = allTranscripts.filter(t => {
+        const matchesSearch = !search ||
+            (t.last_name  || '').toLowerCase().includes(search) ||
+            (t.first_name || '').toLowerCase().includes(search) ||
+            (t.agency     || '').toLowerCase().includes(search) ||
+            (t.job_id     || '').toLowerCase().includes(search) ||
+            (t.notes      || '').toLowerCase().includes(search);
+
+        let matchesFilter = true;
+        switch (currentFilter) {
+            case 'pending':  matchesFilter = !t.scoped; break;
+            case 'scoped':   matchesFilter = t.scoped && !t.proofed; break;
+            case 'proofed':  matchesFilter = t.proofed && !t.final; break;
+            case 'final':    matchesFilter = t.final; break;
+            case 'unbilled': matchesFilter = t.final && !t.billed; break;
+        }
+
+        return matchesSearch && matchesFilter;
+    });
+
+    renderTable(filtered);
+}
+
+function setFilter(filter, btn) {
+    currentFilter = filter;
+    document.querySelectorAll('.filter-tab').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+    applyFilters();
+}
+
+function sortBy(field, th) {
+    if (sortField === field) {
+        sortDir = sortDir === 'asc' ? 'desc' : 'asc';
+    } else {
+        sortField = field;
+        sortDir = 'asc';
+    }
+    document.querySelectorAll('th').forEach(t => t.classList.remove('sorted-asc', 'sorted-desc'));
+    th.classList.add(sortDir === 'asc' ? 'sorted-asc' : 'sorted-desc');
+    loadTranscripts();
+}
+
+function renderTable(transcripts) {
+    const tbody = document.getElementById('table-body');
+
+    if (transcripts.length === 0) {
+        tbody.innerHTML = `
+            <tr><td colspan="10" class="empty-state">
+                <span class="emoji">📂</span>
+                <p>No transcripts found.</p>
+            </td></tr>`;
+        return;
+    }
+
+    const today = new Date(); today.setHours(0,0,0,0);
+    const in3Days = new Date(today); in3Days.setDate(today.getDate() + 3);
+
+    tbody.innerHTML = transcripts.map(t => {
+        const due = t.due_date ? new Date(t.due_date + 'T00:00:00') : null;
+        let dueClass = '';
+        let rowClass = '';
+
+        if (due && !t.billed) {
+            if (due < today)   { dueClass = 'overdue-text'; rowClass = 'overdue'; }
+            else if (due <= in3Days) { dueClass = 'due-soon'; }
+        }
+
+        const dueText = t.due_date ? formatDate(t.due_date) : '—';
+        const fullName = t.last_name + (t.first_name ? `, <span class="first-name">${t.first_name}</span>` : '');
+
+        return `
+        <tr class="${rowClass}">
+            <td><span class="last-name">${fullName}</span></td>
+            <td>${t.date_taken ? formatDate(t.date_taken) : '—'}</td>
+            <td class="${dueClass}">${dueText}</td>
+            <td>${t.pages ?? '—'}</td>
+            <td>${t.agency || '—'}</td>
+            <td><span class="waypoint ${t.scoped  ? 'done':''}" onclick="quickToggle('${t.id}','scoped',${!!t.scoped})"  title="${t.scoped  ? 'Scoped ✓' :'Mark scoped'}"></span></td>
+            <td><span class="waypoint ${t.proofed ? 'done':''}" onclick="quickToggle('${t.id}','proofed',${!!t.proofed})" title="${t.proofed ? 'Proofed ✓':'Mark proofed'}"></span></td>
+            <td><span class="waypoint ${t.final   ? 'done':''}" onclick="quickToggle('${t.id}','final',${!!t.final})"   title="${t.final   ? 'Final ✓'  :'Mark final'}"></span></td>
+            <td><span class="waypoint ${t.billed  ? 'done':''}" onclick="quickToggle('${t.id}','billed',${!!t.billed})"  title="${t.billed  ? 'Billed ✓' :'Mark billed'}"></span></td>
+            <td><button class="btn-icon" onclick="showEditModal('${t.id}')" title="Edit">✏️</button></td>
+        </tr>`;
+    }).join('');
+}
+
+function formatDate(dateStr) {
+    if (!dateStr) return '—';
+    const [y, m, d] = dateStr.split('-');
+    return `${parseInt(m)}/${parseInt(d)}/${y.slice(2)}`;
+}
+
+// ============================================================
+// QUICK WAYPOINT TOGGLE (from table)
+// ============================================================
+async function quickToggle(id, field, currentValue) {
+    const newVal = !currentValue;
+    const update = { [field]: newVal };
+    if (newVal) update[field + '_at'] = new Date().toISOString();
+    else update[field + '_at'] = null;
+
+    const { error } = await supabaseClient.from('transcripts').update(update).eq('id', id);
+
+    if (!error) {
+        const t = allTranscripts.find(x => x.id === id);
+        if (t) Object.assign(t, update);
+        renderStats();
+        applyFilters();
+    }
+}
+
+// ============================================================
+// MODAL — ADD
+// ============================================================
+function showAddModal() {
+    editingId = null;
+    document.getElementById('modal-title').textContent = 'Add Transcript';
+    document.getElementById('modal-id').value = '';
+    document.getElementById('modal-last-name').value = '';
+    document.getElementById('modal-first-name').value = '';
+    document.getElementById('modal-date-taken').value = '';
+    document.getElementById('modal-due-date').value = '';
+    document.getElementById('modal-pages').value = '';
+    document.getElementById('modal-agency').value = '';
+    document.getElementById('modal-notes').value = '';
+    document.getElementById('delete-btn').classList.add('hidden');
+
+    modalWaypoints = { scoped: false, proofed: false, final: false, billed: false };
+    renderModalWaypoints();
+
+    document.getElementById('modal-overlay').classList.remove('hidden');
+    setTimeout(() => document.getElementById('modal-last-name').focus(), 100);
+}
+
+// ============================================================
+// MODAL — EDIT
+// ============================================================
+function showEditModal(id) {
+    const t = allTranscripts.find(x => x.id === id);
+    if (!t) return;
+
+    editingId = id;
+    document.getElementById('modal-title').textContent = 'Edit Transcript';
+    document.getElementById('modal-id').value = id;
+    document.getElementById('modal-last-name').value = t.last_name || '';
+    document.getElementById('modal-first-name').value = t.first_name || '';
+    document.getElementById('modal-date-taken').value = t.date_taken || '';
+    document.getElementById('modal-due-date').value = t.due_date || '';
+    document.getElementById('modal-pages').value = t.pages ?? '';
+    document.getElementById('modal-agency').value = t.agency || '';
+    document.getElementById('modal-notes').value = t.notes || '';
+    document.getElementById('delete-btn').classList.remove('hidden');
+
+    modalWaypoints = {
+        scoped:  !!t.scoped,
+        proofed: !!t.proofed,
+        final:   !!t.final,
+        billed:  !!t.billed
+    };
+    renderModalWaypoints();
+
+    document.getElementById('modal-overlay').classList.remove('hidden');
+}
+
+function closeModal() {
+    document.getElementById('modal-overlay').classList.add('hidden');
+}
+
+function handleOverlayClick(e) {
+    if (e.target === document.getElementById('modal-overlay')) closeModal();
+}
+
+function toggleModalWaypoint(field) {
+    modalWaypoints[field] = !modalWaypoints[field];
+    renderModalWaypoints();
+}
+
+function renderModalWaypoints() {
+    ['scoped', 'proofed', 'final', 'billed'].forEach(w => {
+        const el = document.getElementById('wp-' + w);
+        el.classList.toggle('active', !!modalWaypoints[w]);
+    });
+}
+
+// ============================================================
+// SAVE / DELETE
+// ============================================================
+async function saveTranscript() {
+    const lastName = document.getElementById('modal-last-name').value.trim();
+    if (!lastName) {
+        alert('Last name is required.');
+        document.getElementById('modal-last-name').focus();
+        return;
+    }
+
+    const dateTaken = document.getElementById('modal-date-taken').value;
+
+    // Generate job_id from date + last name (matching Zapier format)
+    let jobId;
+    if (dateTaken) {
+        const d = new Date(dateTaken + 'T00:00:00');
+        const yy = String(d.getFullYear()).slice(2);
+        const mm = String(d.getMonth()+1).padStart(2,'0');
+        const dd = String(d.getDate()).padStart(2,'0');
+        jobId = `${yy}${mm}${dd}-${lastName}`;
+    } else {
+        jobId = `manual-${lastName}-${Date.now()}`;
+    }
+
+    const data = {
+        last_name:  lastName,
+        first_name: document.getElementById('modal-first-name').value.trim() || null,
+        date_taken: dateTaken || null,
+        due_date:   document.getElementById('modal-due-date').value || null,
+        pages:      parseInt(document.getElementById('modal-pages').value) || null,
+        agency:     document.getElementById('modal-agency').value.trim() || null,
+        notes:      document.getElementById('modal-notes').value.trim() || null,
+        scoped:     modalWaypoints.scoped,
+        proofed:    modalWaypoints.proofed,
+        final:      modalWaypoints.final,
+        billed:     modalWaypoints.billed,
+    };
+
+    // Timestamps for newly checked waypoints
+    const now = new Date().toISOString();
+    ['scoped','proofed','final','billed'].forEach(w => {
+        data[w + '_at'] = modalWaypoints[w] ? (editingId ? undefined : now) : null;
+    });
+
+    let error;
+    if (editingId) {
+        delete data.scoped_at; delete data.proofed_at; delete data.final_at; delete data.billed_at;
+        ({ error } = await supabaseClient.from('transcripts').update(data).eq('id', editingId));
+    } else {
+        data.job_id = jobId;
+        ({ error } = await supabaseClient.from('transcripts').insert(data));
+    }
+
+    if (error) {
+        console.error('Save error:', error);
+        alert('Save failed: ' + error.message);
+        return;
+    }
+
+    closeModal();
+    loadTranscripts();
+}
+
+async function deleteTranscript() {
+    if (!editingId) return;
+    const t = allTranscripts.find(x => x.id === editingId);
+    const name = t ? t.last_name : 'this transcript';
+    if (!confirm(`Delete ${name}? This cannot be undone.`)) return;
+
+    const { error } = await supabaseClient.from('transcripts').delete().eq('id', editingId);
+    if (!error) {
+        closeModal();
+        loadTranscripts();
+    }
+}
+
+// ============================================================
+// SERVICE WORKER (for PWA installability)
+// ============================================================
+if ('serviceWorker' in navigator) {
+    navigator.serviceWorker.register('sw.js').catch(e => console.warn('SW:', e));
+}
+
+// ============================================================
+// START
+// ============================================================
+document.addEventListener('DOMContentLoaded', init);
+</script>
+</body>
+</html>
