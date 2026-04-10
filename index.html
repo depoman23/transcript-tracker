@@ -74,8 +74,6 @@
         }
         #header h1 { font-size: 17px; font-weight: 700; letter-spacing: -0.3px; }
         .header-actions { display: flex; gap: 8px; align-items: center; }
-        #header-sync { font-size: 11px; opacity: 0.75; }
-
         /* ---- STATS ---- */
         #stats-bar {
             display: flex;
@@ -110,39 +108,6 @@
             font-family: inherit;
         }
         #search-input:focus { outline: none; border-color: var(--primary); }
-
-        #filter-tabs {
-            display: flex;
-            gap: 4px;
-            padding: 0 16px 8px;
-            overflow-x: auto;
-            -webkit-overflow-scrolling: touch;
-        }
-        #filter-tabs::-webkit-scrollbar { display: none; }
-        .filter-tab {
-            padding: 5px 13px;
-            border-radius: 16px;
-            font-size: 12px;
-            font-weight: 500;
-            cursor: pointer;
-            border: 1px solid var(--border);
-            background: white;
-            white-space: nowrap;
-            font-family: inherit;
-            transition: all 0.12s;
-        }
-        .filter-tab.active { background: var(--primary); color: white; border-color: var(--primary); }
-
-        /* ---- SYNC INFO ---- */
-        #sync-info {
-            padding: 2px 16px 8px;
-            font-size: 11px;
-            color: var(--text-muted);
-            display: flex;
-            align-items: center;
-            gap: 5px;
-        }
-        .sync-dot { width: 6px; height: 6px; border-radius: 50%; background: var(--success); flex-shrink: 0; }
 
         /* ---- TABLE ---- */
         .table-wrap {
@@ -183,10 +148,9 @@
         }
         tr:last-child td { border-bottom: none; }
         tr:hover td { background: #FAFBFD; }
-        tr.overdue td:nth-child(3) { color: var(--danger); font-weight: 600; }
+        tr.overdue td:nth-child(1) { color: var(--danger); font-weight: 600; }
 
         .last-name { font-weight: 600; }
-        .first-name { color: var(--text-muted); font-size: 12px; }
         .due-soon { color: var(--warning); font-weight: 600; }
 
         /* ---- WAYPOINTS IN TABLE ---- */
@@ -369,6 +333,14 @@
         .wp-label { font-size: 11px; font-weight: 700; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.04em; }
         .waypoint-toggle.active .wp-label { color: #059669; }
 
+        /* ---- BILLED ROWS ---- */
+        tr.billed-row td { color: #94A3B8; background: #F8FAFC; }
+        tr.billed-row:hover td { background: #F1F5F9; }
+        tr.billed-row .last-name { font-weight: 400; }
+        tr.billed-row .waypoint.done { background: #CBD5E1; border-color: #CBD5E1; }
+        tr.billed-row .waypoint:not(.done) { border-color: #E2E8F0; }
+        tr.billed-row .btn-icon { opacity: 0.5; }
+
         /* ---- EMPTY & LOADING ---- */
         .empty-state, .loading-state {
             text-align: center;
@@ -418,7 +390,6 @@
     <div id="header">
         <h1>📋 Transcript Tracker</h1>
         <div class="header-actions">
-            <span id="header-sync"></span>
             <button class="btn-header" onclick="showAddModal()">+ New</button>
         </div>
     </div>
@@ -431,27 +402,13 @@
         <input type="search" id="search-input" placeholder="🔍  Search by name, agency, job ID..." oninput="applyFilters()">
     </div>
 
-    <div id="filter-tabs">
-        <button class="filter-tab active" onclick="setFilter('all', this)">All</button>
-        <button class="filter-tab" onclick="setFilter('pending', this)">Pending</button>
-        <button class="filter-tab" onclick="setFilter('scoped', this)">Scoped</button>
-        <button class="filter-tab" onclick="setFilter('proofed', this)">Proofed</button>
-        <button class="filter-tab" onclick="setFilter('final', this)">Final</button>
-        <button class="filter-tab" onclick="setFilter('unbilled', this)">Unbilled</button>
-    </div>
-
-    <div id="sync-info">
-        <div class="sync-dot"></div>
-        <span id="last-sync-text">Checking sync status...</span>
-    </div>
-
     <div class="table-wrap">
         <table>
             <thead>
                 <tr>
-                    <th onclick="sortBy('last_name', this)">Last Name</th>
-                    <th onclick="sortBy('date_taken', this)">Date Taken</th>
                     <th onclick="sortBy('due_date', this)">Due Date</th>
+                    <th onclick="sortBy('date_taken', this)">Date Taken</th>
+                    <th onclick="sortBy('last_name', this)">Last Name</th>
                     <th onclick="sortBy('pages', this)">Pgs</th>
                     <th onclick="sortBy('agency', this)">Agency</th>
                     <th title="Scoped">Sc</th>
@@ -482,15 +439,9 @@
 
         <input type="hidden" id="modal-id">
 
-        <div class="form-row">
-            <div class="form-group">
-                <label>Last Name *</label>
-                <input type="text" id="modal-last-name" placeholder="Smith" autocapitalize="words">
-            </div>
-            <div class="form-group">
-                <label>First Name</label>
-                <input type="text" id="modal-first-name" placeholder="John" autocapitalize="words">
-            </div>
+        <div class="form-group">
+            <label>Last Name *</label>
+            <input type="text" id="modal-last-name" placeholder="Smith" autocapitalize="words">
         </div>
 
         <div class="form-row">
@@ -561,7 +512,6 @@
 // ============================================================
 let supabaseClient = null;
 let allTranscripts = [];
-let currentFilter = 'all';
 let editingId = null;
 let modalWaypoints = { scoped: false, proofed: false, final: false, billed: false };
 let sortField = 'date_taken';
@@ -587,7 +537,6 @@ function connectSupabase(url, key) {
     document.getElementById('setup-screen').classList.add('hidden');
     document.getElementById('app').classList.remove('hidden');
     loadTranscripts();
-    loadSyncInfo();
     subscribeToChanges();
 }
 
@@ -633,40 +582,11 @@ async function loadTranscripts() {
     applyFilters();
 }
 
-async function loadSyncInfo() {
-    try {
-        const { data } = await supabaseClient
-            .from('sync_log')
-            .select('last_sync')
-            .eq('id', 1)
-            .single();
-
-        const el = document.getElementById('last-sync-text');
-        const headerEl = document.getElementById('header-sync');
-
-        if (data && data.last_sync) {
-            const d = new Date(data.last_sync);
-            const timeStr = d.toLocaleDateString('en-US', {month:'short', day:'numeric'}) + ' ' +
-                            d.toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'});
-            el.textContent = `Last Slack sync: ${timeStr}`;
-            headerEl.textContent = `Synced ${timeStr}`;
-        } else {
-            el.textContent = 'Slack sync not yet run';
-            headerEl.textContent = '';
-        }
-    } catch (e) {
-        document.getElementById('last-sync-text').textContent = 'Sync status unavailable';
-    }
-}
-
 function subscribeToChanges() {
     supabaseClient
         .channel('realtime-changes')
         .on('postgres_changes', { event: '*', schema: 'public', table: 'transcripts' }, () => {
             loadTranscripts();
-        })
-        .on('postgres_changes', { event: '*', schema: 'public', table: 'sync_log' }, () => {
-            loadSyncInfo();
         })
         .subscribe();
 }
@@ -709,34 +629,14 @@ function renderStats() {
 function applyFilters() {
     const search = document.getElementById('search-input').value.toLowerCase().trim();
 
-    let filtered = allTranscripts.filter(t => {
-        const matchesSearch = !search ||
-            (t.last_name  || '').toLowerCase().includes(search) ||
-            (t.first_name || '').toLowerCase().includes(search) ||
-            (t.agency     || '').toLowerCase().includes(search) ||
-            (t.job_id     || '').toLowerCase().includes(search) ||
-            (t.notes      || '').toLowerCase().includes(search);
-
-        let matchesFilter = true;
-        switch (currentFilter) {
-            case 'pending':  matchesFilter = !t.scoped; break;
-            case 'scoped':   matchesFilter = t.scoped && !t.proofed; break;
-            case 'proofed':  matchesFilter = t.proofed && !t.final; break;
-            case 'final':    matchesFilter = t.final; break;
-            case 'unbilled': matchesFilter = t.final && !t.billed; break;
-        }
-
-        return matchesSearch && matchesFilter;
-    });
+    const filtered = allTranscripts.filter(t => !search ||
+        (t.last_name || '').toLowerCase().includes(search) ||
+        (t.agency    || '').toLowerCase().includes(search) ||
+        (t.job_id    || '').toLowerCase().includes(search) ||
+        (t.notes     || '').toLowerCase().includes(search)
+    );
 
     renderTable(filtered);
-}
-
-function setFilter(filter, btn) {
-    currentFilter = filter;
-    document.querySelectorAll('.filter-tab').forEach(b => b.classList.remove('active'));
-    btn.classList.add('active');
-    applyFilters();
 }
 
 function sortBy(field, th) {
@@ -763,27 +663,32 @@ function renderTable(transcripts) {
         return;
     }
 
+    // Split into active and billed; billed go to bottom sorted by date_taken
+    const active = transcripts.filter(t => !t.billed);
+    const billed = transcripts.filter(t => t.billed)
+        .sort((a, b) => (a.date_taken || '').localeCompare(b.date_taken || ''));
+    const ordered = [...active, ...billed];
+
     const today = new Date(); today.setHours(0,0,0,0);
     const in3Days = new Date(today); in3Days.setDate(today.getDate() + 3);
 
-    tbody.innerHTML = transcripts.map(t => {
+    tbody.innerHTML = ordered.map(t => {
         const due = t.due_date ? new Date(t.due_date + 'T00:00:00') : null;
         let dueClass = '';
-        let rowClass = '';
+        let rowClass = t.billed ? 'billed-row' : '';
 
         if (due && !t.billed) {
-            if (due < today)   { dueClass = 'overdue-text'; rowClass = 'overdue'; }
+            if (due < today)        { dueClass = 'overdue-text'; rowClass = 'overdue'; }
             else if (due <= in3Days) { dueClass = 'due-soon'; }
         }
 
         const dueText = t.due_date ? formatDate(t.due_date) : '—';
-        const fullName = t.last_name + (t.first_name ? `, <span class="first-name">${t.first_name}</span>` : '');
 
         return `
         <tr class="${rowClass}">
-            <td><span class="last-name">${fullName}</span></td>
-            <td>${t.date_taken ? formatDate(t.date_taken) : '—'}</td>
             <td class="${dueClass}">${dueText}</td>
+            <td>${t.date_taken ? formatDate(t.date_taken) : '—'}</td>
+            <td><span class="last-name">${t.last_name || '—'}</span></td>
             <td>${t.pages ?? '—'}</td>
             <td>${t.agency || '—'}</td>
             <td><span class="waypoint ${t.scoped  ? 'done':''}" onclick="quickToggle('${t.id}','scoped',${!!t.scoped})"  title="${t.scoped  ? 'Scoped ✓' :'Mark scoped'}"></span></td>
@@ -828,7 +733,6 @@ function showAddModal() {
     document.getElementById('modal-title').textContent = 'Add Transcript';
     document.getElementById('modal-id').value = '';
     document.getElementById('modal-last-name').value = '';
-    document.getElementById('modal-first-name').value = '';
     document.getElementById('modal-date-taken').value = '';
     document.getElementById('modal-due-date').value = '';
     document.getElementById('modal-pages').value = '';
@@ -854,7 +758,6 @@ function showEditModal(id) {
     document.getElementById('modal-title').textContent = 'Edit Transcript';
     document.getElementById('modal-id').value = id;
     document.getElementById('modal-last-name').value = t.last_name || '';
-    document.getElementById('modal-first-name').value = t.first_name || '';
     document.getElementById('modal-date-taken').value = t.date_taken || '';
     document.getElementById('modal-due-date').value = t.due_date || '';
     document.getElementById('modal-pages').value = t.pages ?? '';
@@ -920,7 +823,6 @@ async function saveTranscript() {
 
     const data = {
         last_name:  lastName,
-        first_name: document.getElementById('modal-first-name').value.trim() || null,
         date_taken: dateTaken || null,
         due_date:   document.getElementById('modal-due-date').value || null,
         pages:      parseInt(document.getElementById('modal-pages').value) || null,
