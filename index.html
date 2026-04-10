@@ -333,6 +333,22 @@
         .wp-label { font-size: 11px; font-weight: 700; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.04em; }
         .waypoint-toggle.active .wp-label { color: #059669; }
 
+        /* ---- UPLOADS COLUMN ---- */
+        .upload-cell {
+            font-size: 11px;
+            color: var(--text-muted);
+            font-family: 'SF Mono', 'Consolas', monospace;
+            max-width: 220px;
+            word-break: break-all;
+            line-height: 1.4;
+        }
+        tr.upload-extra-row td {
+            padding-top: 2px;
+            padding-bottom: 4px;
+            border-bottom: none;
+        }
+        tr.upload-extra-row + tr td { border-top: 1px solid #F1F5F9; }
+
         /* ---- BILLED ROWS ---- */
         tr.billed-row td { color: #94A3B8; background: #F8FAFC; }
         tr.billed-row:hover td { background: #F1F5F9; }
@@ -411,6 +427,7 @@
                     <th onclick="sortBy('last_name', this)">Last Name</th>
                     <th onclick="sortBy('pages', this)">Pgs</th>
                     <th onclick="sortBy('agency', this)">Agency</th>
+                    <th>Uploads</th>
                     <th title="Scoped">Sc</th>
                     <th title="Proofed">Pr</th>
                     <th title="Final">Fn</th>
@@ -419,7 +436,7 @@
                 </tr>
             </thead>
             <tbody id="table-body">
-                <tr><td colspan="10" class="loading-state">Loading transcripts...</td></tr>
+                <tr><td colspan="11" class="loading-state">Loading transcripts...</td></tr>
             </tbody>
         </table>
     </div>
@@ -563,7 +580,7 @@ function saveSetup() {
 // ============================================================
 async function loadTranscripts() {
     document.getElementById('table-body').innerHTML =
-        '<tr><td colspan="10" class="loading-state">Loading...</td></tr>';
+        '<tr><td colspan="11" class="loading-state">Loading...</td></tr>';
 
     const { data, error } = await supabaseClient
         .from('transcripts')
@@ -573,7 +590,7 @@ async function loadTranscripts() {
     if (error) {
         console.error('Load error:', error);
         document.getElementById('table-body').innerHTML =
-            `<tr><td colspan="10" class="empty-state"><span class="emoji">⚠️</span><p>Error loading data.<br><small>${error.message}</small></p></td></tr>`;
+            `<tr><td colspan="11" class="empty-state"><span class="emoji">⚠️</span><p>Error loading data.<br><small>${error.message}</small></p></td></tr>`;
         return;
     }
 
@@ -656,7 +673,7 @@ function renderTable(transcripts) {
 
     if (transcripts.length === 0) {
         tbody.innerHTML = `
-            <tr><td colspan="10" class="empty-state">
+            <tr><td colspan="11" class="empty-state">
                 <span class="emoji">📂</span>
                 <p>No transcripts found.</p>
             </td></tr>`;
@@ -678,25 +695,41 @@ function renderTable(transcripts) {
         let rowClass = t.billed ? 'billed-row' : '';
 
         if (due && !t.billed) {
-            if (due < today)        { dueClass = 'overdue-text'; rowClass = 'overdue'; }
+            if (due < today)         { dueClass = 'overdue-text'; rowClass = 'overdue'; }
             else if (due <= in3Days) { dueClass = 'due-soon'; }
         }
 
-        const dueText = t.due_date ? formatDate(t.due_date) : '—';
+        const dueText   = t.due_date ? formatDate(t.due_date) : '—';
+        const uploads   = Array.isArray(t.uploads) ? t.uploads : [];
+        const rowCount  = Math.max(1, uploads.length);
+        const rs        = rowCount > 1 ? ` rowspan="${rowCount}"` : '';
 
-        return `
+        // Shared waypoint + action cells (rowspanned)
+        const waypointCells = `
+            <td${rs}><span class="waypoint ${t.scoped  ? 'done':''}" onclick="quickToggle('${t.id}','scoped',${!!t.scoped})"   title="${t.scoped  ? 'Scoped ✓' :'Mark scoped'}"></span></td>
+            <td${rs}><span class="waypoint ${t.proofed ? 'done':''}" onclick="quickToggle('${t.id}','proofed',${!!t.proofed})" title="${t.proofed ? 'Proofed ✓':'Mark proofed'}"></span></td>
+            <td${rs}><span class="waypoint ${t.final   ? 'done':''}" onclick="quickToggle('${t.id}','final',${!!t.final})"     title="${t.final   ? 'Final ✓'  :'Mark final'}"></span></td>
+            <td${rs}><span class="waypoint ${t.billed  ? 'done':''}" onclick="quickToggle('${t.id}','billed',${!!t.billed})"   title="${t.billed  ? 'Billed ✓' :'Mark billed'}"></span></td>
+            <td${rs}><button class="btn-icon" onclick="showEditModal('${t.id}')" title="Edit">✏️</button></td>`;
+
+        // First row — full data + first upload
+        let html = `
         <tr class="${rowClass}">
-            <td class="${dueClass}">${dueText}</td>
-            <td>${t.date_taken ? formatDate(t.date_taken) : '—'}</td>
-            <td><span class="last-name">${t.last_name || '—'}</span></td>
-            <td>${t.pages ?? '—'}</td>
-            <td>${t.agency || '—'}</td>
-            <td><span class="waypoint ${t.scoped  ? 'done':''}" onclick="quickToggle('${t.id}','scoped',${!!t.scoped})"  title="${t.scoped  ? 'Scoped ✓' :'Mark scoped'}"></span></td>
-            <td><span class="waypoint ${t.proofed ? 'done':''}" onclick="quickToggle('${t.id}','proofed',${!!t.proofed})" title="${t.proofed ? 'Proofed ✓':'Mark proofed'}"></span></td>
-            <td><span class="waypoint ${t.final   ? 'done':''}" onclick="quickToggle('${t.id}','final',${!!t.final})"   title="${t.final   ? 'Final ✓'  :'Mark final'}"></span></td>
-            <td><span class="waypoint ${t.billed  ? 'done':''}" onclick="quickToggle('${t.id}','billed',${!!t.billed})"  title="${t.billed  ? 'Billed ✓' :'Mark billed'}"></span></td>
-            <td><button class="btn-icon" onclick="showEditModal('${t.id}')" title="Edit">✏️</button></td>
+            <td${rs} class="${dueClass}">${dueText}</td>
+            <td${rs}>${t.date_taken ? formatDate(t.date_taken) : '—'}</td>
+            <td${rs}><span class="last-name">${t.last_name || '—'}</span></td>
+            <td${rs}>${t.pages ?? '—'}</td>
+            <td${rs}>${t.agency || '—'}</td>
+            <td class="upload-cell">${uploads[0] || ''}</td>
+            ${waypointCells}
         </tr>`;
+
+        // Extra rows — just the additional upload filenames
+        for (let i = 1; i < uploads.length; i++) {
+            html += `<tr class="${rowClass} upload-extra-row"><td class="upload-cell">${uploads[i]}</td></tr>`;
+        }
+
+        return html;
     }).join('');
 }
 
