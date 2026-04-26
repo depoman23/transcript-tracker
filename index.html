@@ -470,6 +470,9 @@
             <div class="form-group">
                 <label>Due Date</label>
                 <input type="date" id="modal-due-date">
+                <input type="text" id="modal-due-date-bd" placeholder="or type 5BD, 10BD…" autocomplete="off"
+                       style="margin-top:5px; font-size:12px; padding:5px 10px;"
+                       onblur="parseBDShorthand(this)" oninput="this.value=this.value.toUpperCase()">
             </div>
         </div>
 
@@ -480,8 +483,14 @@
             </div>
             <div class="form-group">
                 <label>Agency</label>
-                <input type="text" id="modal-agency" placeholder="MRGI, EWU...">
+                <input type="text" id="modal-agency" placeholder="MRGI, EWU..." list="agency-list" autocomplete="off">
+                <datalist id="agency-list"></datalist>
             </div>
+        </div>
+
+        <div class="form-group">
+            <label>Job No.</label>
+            <input type="text" id="modal-job-no" placeholder="e.g. 12345">
         </div>
 
         <div class="form-group">
@@ -741,6 +750,34 @@ function renderTable(transcripts) {
     }).join('');
 }
 
+function populateAgencyList() {
+    const agencies = [...new Set(
+        allTranscripts.map(t => t.agency).filter(Boolean)
+    )].sort();
+    const list = document.getElementById('agency-list');
+    list.innerHTML = agencies.map(a => `<option value="${a}">`).join('');
+}
+
+function parseBDShorthand(input) {
+    const match = input.value.trim().match(/^(\d+)\s*BD$/i);
+    if (match) {
+        document.getElementById('modal-due-date').value =
+            addBusinessDays(new Date(), parseInt(match[1])).toLocaleDateString('en-CA');
+        input.value = '';
+    }
+}
+
+function addBusinessDays(date, days) {
+    const d = new Date(date);
+    let added = 0;
+    while (added < days) {
+        d.setDate(d.getDate() + 1);
+        const dow = d.getDay();
+        if (dow !== 0 && dow !== 6) added++; // skip Sun (0) and Sat (6)
+    }
+    return d;
+}
+
 function formatDate(dateStr) {
     if (!dateStr) return '—';
     const [y, m, d] = dateStr.split('-');
@@ -774,16 +811,19 @@ function showAddModal() {
     document.getElementById('modal-title').textContent = 'Add Transcript';
     document.getElementById('modal-id').value = '';
     document.getElementById('modal-last-name').value = '';
-    document.getElementById('modal-date-taken').value = '';
-    document.getElementById('modal-due-date').value = '';
+    document.getElementById('modal-date-taken').value = new Date().toLocaleDateString('en-CA');
+    document.getElementById('modal-due-date').value = addBusinessDays(new Date(), 10).toLocaleDateString('en-CA');
+    document.getElementById('modal-due-date-bd').value = '';
     document.getElementById('modal-pages').value = '';
     document.getElementById('modal-agency').value = '';
+    document.getElementById('modal-job-no').value = '';
     document.getElementById('modal-notes').value = '';
     document.getElementById('delete-btn').classList.add('hidden');
 
     modalWaypoints = { scoped: false, proofed: false, final: false, billed: false };
     renderModalWaypoints();
 
+    populateAgencyList();
     document.getElementById('modal-overlay').classList.remove('hidden');
     setTimeout(() => document.getElementById('modal-last-name').focus(), 100);
 }
@@ -801,8 +841,10 @@ function showEditModal(id) {
     document.getElementById('modal-last-name').value = t.last_name || '';
     document.getElementById('modal-date-taken').value = t.date_taken || '';
     document.getElementById('modal-due-date').value = t.due_date || '';
+    document.getElementById('modal-due-date-bd').value = '';
     document.getElementById('modal-pages').value = t.pages ?? '';
     document.getElementById('modal-agency').value = t.agency || '';
+    document.getElementById('modal-job-no').value = t.job_no || '';
     document.getElementById('modal-notes').value = t.notes || '';
     document.getElementById('delete-btn').classList.remove('hidden');
 
@@ -814,6 +856,7 @@ function showEditModal(id) {
     };
     renderModalWaypoints();
 
+    populateAgencyList();
     document.getElementById('modal-overlay').classList.remove('hidden');
 }
 
@@ -868,6 +911,7 @@ async function saveTranscript() {
         due_date:   document.getElementById('modal-due-date').value || null,
         pages:      parseInt(document.getElementById('modal-pages').value) || null,
         agency:     document.getElementById('modal-agency').value.trim() || null,
+        job_no:     document.getElementById('modal-job-no').value.trim() || null,
         notes:      document.getElementById('modal-notes').value.trim() || null,
         scoped:     modalWaypoints.scoped,
         proofed:    modalWaypoints.proofed,
