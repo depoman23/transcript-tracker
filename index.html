@@ -628,17 +628,16 @@ function subscribeToChanges() {
 // RENDERING
 // ============================================================
 function renderStats() {
-    const t = allTranscripts;
-    const total = t.length;
-    const scoped = t.filter(x => x.scoped).length;
-    const proofed = t.filter(x => x.proofed).length;
-    const final_ = t.filter(x => x.final).length;
-    const unbilled = t.filter(x => x.final && !x.billed).length;
+    const active = allTranscripts.filter(x => !x.billed);
+    const total   = active.length;
+    const scoped  = active.filter(x => x.scoped).length;
+    const proofed = active.filter(x => x.proofed).length;
+    const unbilled = allTranscripts.filter(x => x.final && !x.billed).length;
 
     document.getElementById('stats-bar').innerHTML = `
         <div class="stat-chip">
             <span class="stat-num">${total}</span>
-            <span class="stat-lbl">Total</span>
+            <span class="stat-lbl">Active</span>
         </div>
         <div class="stat-chip">
             <span class="stat-num">${scoped}</span>
@@ -647,10 +646,6 @@ function renderStats() {
         <div class="stat-chip">
             <span class="stat-num">${proofed}</span>
             <span class="stat-lbl">Proofed</span>
-        </div>
-        <div class="stat-chip">
-            <span class="stat-num">${final_}</span>
-            <span class="stat-lbl">Final</span>
         </div>
         <div class="stat-chip" style="${unbilled > 0 ? 'border-color:#FCD34D' : ''}">
             <span class="stat-num" style="${unbilled > 0 ? 'color:#D97706' : ''}">${unbilled}</span>
