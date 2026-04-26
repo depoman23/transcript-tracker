@@ -427,6 +427,7 @@
                     <th onclick="sortBy('last_name', this)">Last Name</th>
                     <th onclick="sortBy('pages', this)">Pgs</th>
                     <th onclick="sortBy('agency', this)">Agency</th>
+                    <th onclick="sortBy('job_no', this)">Job No.</th>
                     <th>Uploads</th>
                     <th title="Scoped">Sc</th>
                     <th title="Proofed">Pr</th>
@@ -436,7 +437,7 @@
                 </tr>
             </thead>
             <tbody id="table-body">
-                <tr><td colspan="11" class="loading-state">Loading transcripts...</td></tr>
+                <tr><td colspan="12" class="loading-state">Loading transcripts...</td></tr>
             </tbody>
         </table>
     </div>
@@ -531,8 +532,8 @@ let supabaseClient = null;
 let allTranscripts = [];
 let editingId = null;
 let modalWaypoints = { scoped: false, proofed: false, final: false, billed: false };
-let sortField = 'date_taken';
-let sortDir = 'desc';
+let sortField = 'due_date';
+let sortDir = 'asc';
 
 // ============================================================
 // INIT & SETUP
@@ -580,7 +581,7 @@ function saveSetup() {
 // ============================================================
 async function loadTranscripts() {
     document.getElementById('table-body').innerHTML =
-        '<tr><td colspan="11" class="loading-state">Loading...</td></tr>';
+        '<tr><td colspan="12" class="loading-state">Loading...</td></tr>';
 
     const { data, error } = await supabaseClient
         .from('transcripts')
@@ -590,11 +591,17 @@ async function loadTranscripts() {
     if (error) {
         console.error('Load error:', error);
         document.getElementById('table-body').innerHTML =
-            `<tr><td colspan="11" class="empty-state"><span class="emoji">⚠️</span><p>Error loading data.<br><small>${error.message}</small></p></td></tr>`;
+            `<tr><td colspan="12" class="empty-state"><span class="emoji">⚠️</span><p>Error loading data.<br><small>${error.message}</small></p></td></tr>`;
         return;
     }
 
     allTranscripts = data || [];
+
+    // Keep sort indicator in sync with current sortField/sortDir
+    document.querySelectorAll('th').forEach(t => t.classList.remove('sorted-asc', 'sorted-desc'));
+    const sortedTh = document.querySelector(`th[onclick*="${sortField}"]`);
+    if (sortedTh) sortedTh.classList.add(sortDir === 'asc' ? 'sorted-asc' : 'sorted-desc');
+
     renderStats();
     applyFilters();
 }
@@ -673,7 +680,7 @@ function renderTable(transcripts) {
 
     if (transcripts.length === 0) {
         tbody.innerHTML = `
-            <tr><td colspan="11" class="empty-state">
+            <tr><td colspan="12" class="empty-state">
                 <span class="emoji">📂</span>
                 <p>No transcripts found.</p>
             </td></tr>`;
@@ -720,6 +727,7 @@ function renderTable(transcripts) {
             <td${rs}><span class="last-name">${t.last_name || '—'}</span></td>
             <td${rs}>${t.pages ?? '—'}</td>
             <td${rs}>${t.agency || '—'}</td>
+            <td${rs}>${t.job_no || '—'}</td>
             <td class="upload-cell">${uploads[0] || ''}</td>
             ${waypointCells}
         </tr>`;
