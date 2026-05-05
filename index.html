@@ -427,7 +427,6 @@
                     <th onclick="sortBy('last_name', this)">Last Name</th>
                     <th onclick="sortBy('pages', this)">Pgs</th>
                     <th onclick="sortBy('agency', this)">Agency</th>
-                    <th onclick="sortBy('job_no', this)">Job No.</th>
                     <th>Uploads</th>
                     <th title="Scoped">Sc</th>
                     <th title="Proofed">Pr</th>
@@ -437,7 +436,7 @@
                 </tr>
             </thead>
             <tbody id="table-body">
-                <tr><td colspan="12" class="loading-state">Loading transcripts...</td></tr>
+                <tr><td colspan="11" class="loading-state">Loading transcripts...</td></tr>
             </tbody>
         </table>
     </div>
@@ -470,9 +469,6 @@
             <div class="form-group">
                 <label>Due Date</label>
                 <input type="date" id="modal-due-date">
-                <input type="text" id="modal-due-date-bd" placeholder="or type 5BD, 10BD…" autocomplete="off"
-                       style="margin-top:5px; font-size:12px; padding:5px 10px;"
-                       onblur="parseBDShorthand(this)" oninput="this.value=this.value.toUpperCase()">
             </div>
         </div>
 
@@ -483,14 +479,8 @@
             </div>
             <div class="form-group">
                 <label>Agency</label>
-                <input type="text" id="modal-agency" placeholder="MRGI, EWU..." list="agency-list" autocomplete="off">
-                <datalist id="agency-list"></datalist>
+                <input type="text" id="modal-agency" placeholder="MRGI, EWU...">
             </div>
-        </div>
-
-        <div class="form-group">
-            <label>Job No.</label>
-            <input type="text" id="modal-job-no" placeholder="e.g. 12345">
         </div>
 
         <div class="form-group">
@@ -541,8 +531,8 @@ let supabaseClient = null;
 let allTranscripts = [];
 let editingId = null;
 let modalWaypoints = { scoped: false, proofed: false, final: false, billed: false };
-let sortField = 'due_date';
-let sortDir = 'asc';
+let sortField = 'date_taken';
+let sortDir = 'desc';
 
 // ============================================================
 // INIT & SETUP
@@ -590,7 +580,7 @@ function saveSetup() {
 // ============================================================
 async function loadTranscripts() {
     document.getElementById('table-body').innerHTML =
-        '<tr><td colspan="12" class="loading-state">Loading...</td></tr>';
+        '<tr><td colspan="11" class="loading-state">Loading...</td></tr>';
 
     const { data, error } = await supabaseClient
         .from('transcripts')
@@ -600,17 +590,11 @@ async function loadTranscripts() {
     if (error) {
         console.error('Load error:', error);
         document.getElementById('table-body').innerHTML =
-            `<tr><td colspan="12" class="empty-state"><span class="emoji">⚠️</span><p>Error loading data.<br><small>${error.message}</small></p></td></tr>`;
+            `<tr><td colspan="11" class="empty-state"><span class="emoji">⚠️</span><p>Error loading data.<br><small>${error.message}</small></p></td></tr>`;
         return;
     }
 
     allTranscripts = data || [];
-
-    // Keep sort indicator in sync with current sortField/sortDir
-    document.querySelectorAll('th').forEach(t => t.classList.remove('sorted-asc', 'sorted-desc'));
-    const sortedTh = document.querySelector(`th[onclick*="${sortField}"]`);
-    if (sortedTh) sortedTh.classList.add(sortDir === 'asc' ? 'sorted-asc' : 'sorted-desc');
-
     renderStats();
     applyFilters();
 }
@@ -628,16 +612,17 @@ function subscribeToChanges() {
 // RENDERING
 // ============================================================
 function renderStats() {
-    const active = allTranscripts.filter(x => !x.billed);
-    const total   = active.length;
-    const scoped  = active.filter(x => x.scoped).length;
-    const proofed = active.filter(x => x.proofed).length;
-    const unbilled = allTranscripts.filter(x => x.final && !x.billed).length;
+    const t = allTranscripts;
+    const total = t.length;
+    const scoped = t.filter(x => x.scoped).length;
+    const proofed = t.filter(x => x.proofed).length;
+    const final_ = t.filter(x => x.final).length;
+    const unbilled = t.filter(x => x.final && !x.billed).length;
 
     document.getElementById('stats-bar').innerHTML = `
         <div class="stat-chip">
             <span class="stat-num">${total}</span>
-            <span class="stat-lbl">Active</span>
+            <span class="stat-lbl">Total</span>
         </div>
         <div class="stat-chip">
             <span class="stat-num">${scoped}</span>
@@ -646,6 +631,10 @@ function renderStats() {
         <div class="stat-chip">
             <span class="stat-num">${proofed}</span>
             <span class="stat-lbl">Proofed</span>
+        </div>
+        <div class="stat-chip">
+            <span class="stat-num">${final_}</span>
+            <span class="stat-lbl">Final</span>
         </div>
         <div class="stat-chip" style="${unbilled > 0 ? 'border-color:#FCD34D' : ''}">
             <span class="stat-num" style="${unbilled > 0 ? 'color:#D97706' : ''}">${unbilled}</span>
@@ -684,17 +673,31 @@ function renderTable(transcripts) {
 
     if (transcripts.length === 0) {
         tbody.innerHTML = `
-            <tr><td colspan="12" class="empty-state">
+            <tr><td colspan="11" class="empty-state">
                 <span class="emoji">📂</span>
                 <p>No transcripts found.</p>
             </td></tr>`;
         return;
     }
 
-    // Split into active and billed; billed go to bottom sorted by date_taken
-    const active = transcripts.filter(t => !t.billed);
+    // Active rows: sort by due_date ascending (soonest first, nulls last)
+    const active = transcripts.filter(t => !t.billed)
+        .sort((a, b) => {
+            if (!a.due_date && !b.due_date) return 0;
+            if (!a.due_date) return 1;
+            if (!b.due_date) return -1;
+            return a.due_date.localeCompare(b.due_date);
+        });
+
+    // Billed rows: sort by date_taken descending (newest first, nulls last)
     const billed = transcripts.filter(t => t.billed)
-        .sort((a, b) => (a.date_taken || '').localeCompare(b.date_taken || ''));
+        .sort((a, b) => {
+            if (!a.date_taken && !b.date_taken) return 0;
+            if (!a.date_taken) return 1;
+            if (!b.date_taken) return -1;
+            return b.date_taken.localeCompare(a.date_taken);
+        });
+
     const ordered = [...active, ...billed];
 
     const today = new Date(); today.setHours(0,0,0,0);
@@ -731,7 +734,6 @@ function renderTable(transcripts) {
             <td${rs}><span class="last-name">${t.last_name || '—'}</span></td>
             <td${rs}>${t.pages ?? '—'}</td>
             <td${rs}>${t.agency || '—'}</td>
-            <td${rs}>${t.job_no || '—'}</td>
             <td class="upload-cell">${uploads[0] || ''}</td>
             ${waypointCells}
         </tr>`;
@@ -743,34 +745,6 @@ function renderTable(transcripts) {
 
         return html;
     }).join('');
-}
-
-function populateAgencyList() {
-    const agencies = [...new Set(
-        allTranscripts.map(t => t.agency).filter(Boolean)
-    )].sort();
-    const list = document.getElementById('agency-list');
-    list.innerHTML = agencies.map(a => `<option value="${a}">`).join('');
-}
-
-function parseBDShorthand(input) {
-    const match = input.value.trim().match(/^(\d+)\s*BD$/i);
-    if (match) {
-        document.getElementById('modal-due-date').value =
-            addBusinessDays(new Date(), parseInt(match[1])).toLocaleDateString('en-CA');
-        input.value = '';
-    }
-}
-
-function addBusinessDays(date, days) {
-    const d = new Date(date);
-    let added = 0;
-    while (added < days) {
-        d.setDate(d.getDate() + 1);
-        const dow = d.getDay();
-        if (dow !== 0 && dow !== 6) added++; // skip Sun (0) and Sat (6)
-    }
-    return d;
 }
 
 function formatDate(dateStr) {
@@ -806,19 +780,16 @@ function showAddModal() {
     document.getElementById('modal-title').textContent = 'Add Transcript';
     document.getElementById('modal-id').value = '';
     document.getElementById('modal-last-name').value = '';
-    document.getElementById('modal-date-taken').value = new Date().toLocaleDateString('en-CA');
-    document.getElementById('modal-due-date').value = addBusinessDays(new Date(), 10).toLocaleDateString('en-CA');
-    document.getElementById('modal-due-date-bd').value = '';
+    document.getElementById('modal-date-taken').value = '';
+    document.getElementById('modal-due-date').value = '';
     document.getElementById('modal-pages').value = '';
     document.getElementById('modal-agency').value = '';
-    document.getElementById('modal-job-no').value = '';
     document.getElementById('modal-notes').value = '';
     document.getElementById('delete-btn').classList.add('hidden');
 
     modalWaypoints = { scoped: false, proofed: false, final: false, billed: false };
     renderModalWaypoints();
 
-    populateAgencyList();
     document.getElementById('modal-overlay').classList.remove('hidden');
     setTimeout(() => document.getElementById('modal-last-name').focus(), 100);
 }
@@ -836,10 +807,8 @@ function showEditModal(id) {
     document.getElementById('modal-last-name').value = t.last_name || '';
     document.getElementById('modal-date-taken').value = t.date_taken || '';
     document.getElementById('modal-due-date').value = t.due_date || '';
-    document.getElementById('modal-due-date-bd').value = '';
     document.getElementById('modal-pages').value = t.pages ?? '';
     document.getElementById('modal-agency').value = t.agency || '';
-    document.getElementById('modal-job-no').value = t.job_no || '';
     document.getElementById('modal-notes').value = t.notes || '';
     document.getElementById('delete-btn').classList.remove('hidden');
 
@@ -851,7 +820,6 @@ function showEditModal(id) {
     };
     renderModalWaypoints();
 
-    populateAgencyList();
     document.getElementById('modal-overlay').classList.remove('hidden');
 }
 
@@ -906,7 +874,6 @@ async function saveTranscript() {
         due_date:   document.getElementById('modal-due-date').value || null,
         pages:      parseInt(document.getElementById('modal-pages').value) || null,
         agency:     document.getElementById('modal-agency').value.trim() || null,
-        job_no:     document.getElementById('modal-job-no').value.trim() || null,
         notes:      document.getElementById('modal-notes').value.trim() || null,
         scoped:     modalWaypoints.scoped,
         proofed:    modalWaypoints.proofed,
