@@ -425,18 +425,19 @@
                     <th onclick="sortBy('due_date', this)">Due Date</th>
                     <th onclick="sortBy('date_taken', this)">Date Taken</th>
                     <th onclick="sortBy('last_name', this)">Last Name</th>
+                    <th onclick="sortBy('job_id', this)">Job ID</th>
                     <th onclick="sortBy('pages', this)">Pgs</th>
                     <th onclick="sortBy('agency', this)">Agency</th>
                     <th>Uploads</th>
                     <th title="Scoped">Sc</th>
                     <th title="Proofed">Pr</th>
-                    <th title="Final">Fn</th>
                     <th title="Billed">Bi</th>
+                    <th title="Final">Fn</th>
                     <th></th>
                 </tr>
             </thead>
             <tbody id="table-body">
-                <tr><td colspan="11" class="loading-state">Loading transcripts...</td></tr>
+                <tr><td colspan="12" class="loading-state">Loading transcripts...</td></tr>
             </tbody>
         </table>
     </div>
@@ -456,9 +457,15 @@
 
         <input type="hidden" id="modal-id">
 
-        <div class="form-group">
-            <label>Last Name *</label>
-            <input type="text" id="modal-last-name" placeholder="Smith" autocapitalize="words">
+        <div class="form-row">
+            <div class="form-group">
+                <label>Last Name *</label>
+                <input type="text" id="modal-last-name" placeholder="Smith" autocapitalize="words">
+            </div>
+            <div class="form-group">
+                <label>Job ID</label>
+                <input type="text" id="modal-job-id" placeholder="260408-Smith" autocapitalize="off" autocorrect="off">
+            </div>
         </div>
 
         <div class="form-row">
@@ -479,7 +486,8 @@
             </div>
             <div class="form-group">
                 <label>Agency</label>
-                <input type="text" id="modal-agency" placeholder="MRGI, EWU...">
+                <input type="text" id="modal-agency" placeholder="MRGI, EWU..." list="agency-list" autocomplete="off">
+                <datalist id="agency-list"></datalist>
             </div>
         </div>
 
@@ -499,13 +507,13 @@
                     <div class="wp-icon"></div>
                     <div class="wp-label">Proofed</div>
                 </div>
-                <div class="waypoint-toggle" id="wp-final" onclick="toggleModalWaypoint('final')">
-                    <div class="wp-icon"></div>
-                    <div class="wp-label">Final</div>
-                </div>
                 <div class="waypoint-toggle" id="wp-billed" onclick="toggleModalWaypoint('billed')">
                     <div class="wp-icon"></div>
                     <div class="wp-label">Billed</div>
+                </div>
+                <div class="waypoint-toggle" id="wp-final" onclick="toggleModalWaypoint('final')">
+                    <div class="wp-icon"></div>
+                    <div class="wp-label">Final</div>
                 </div>
             </div>
         </div>
@@ -580,7 +588,7 @@ function saveSetup() {
 // ============================================================
 async function loadTranscripts() {
     document.getElementById('table-body').innerHTML =
-        '<tr><td colspan="11" class="loading-state">Loading...</td></tr>';
+        '<tr><td colspan="12" class="loading-state">Loading...</td></tr>';
 
     const { data, error } = await supabaseClient
         .from('transcripts')
@@ -590,13 +598,22 @@ async function loadTranscripts() {
     if (error) {
         console.error('Load error:', error);
         document.getElementById('table-body').innerHTML =
-            `<tr><td colspan="11" class="empty-state"><span class="emoji">⚠️</span><p>Error loading data.<br><small>${error.message}</small></p></td></tr>`;
+            `<tr><td colspan="12" class="empty-state"><span class="emoji">⚠️</span><p>Error loading data.<br><small>${error.message}</small></p></td></tr>`;
         return;
     }
 
     allTranscripts = data || [];
     renderStats();
     applyFilters();
+    populateAgencyList();
+}
+
+function populateAgencyList() {
+    const agencies = [...new Set(allTranscripts.map(t => t.agency).filter(Boolean))].sort();
+    const datalist = document.getElementById('agency-list');
+    if (datalist) {
+        datalist.innerHTML = agencies.map(a => `<option value="${a}">`).join('');
+    }
 }
 
 function subscribeToChanges() {
@@ -673,7 +690,7 @@ function renderTable(transcripts) {
 
     if (transcripts.length === 0) {
         tbody.innerHTML = `
-            <tr><td colspan="11" class="empty-state">
+            <tr><td colspan="12" class="empty-state">
                 <span class="emoji">📂</span>
                 <p>No transcripts found.</p>
             </td></tr>`;
@@ -722,8 +739,8 @@ function renderTable(transcripts) {
         const waypointCells = `
             <td${rs}><span class="waypoint ${t.scoped  ? 'done':''}" onclick="quickToggle('${t.id}','scoped',${!!t.scoped})"   title="${t.scoped  ? 'Scoped ✓' :'Mark scoped'}"></span></td>
             <td${rs}><span class="waypoint ${t.proofed ? 'done':''}" onclick="quickToggle('${t.id}','proofed',${!!t.proofed})" title="${t.proofed ? 'Proofed ✓':'Mark proofed'}"></span></td>
-            <td${rs}><span class="waypoint ${t.final   ? 'done':''}" onclick="quickToggle('${t.id}','final',${!!t.final})"     title="${t.final   ? 'Final ✓'  :'Mark final'}"></span></td>
             <td${rs}><span class="waypoint ${t.billed  ? 'done':''}" onclick="quickToggle('${t.id}','billed',${!!t.billed})"   title="${t.billed  ? 'Billed ✓' :'Mark billed'}"></span></td>
+            <td${rs}><span class="waypoint ${t.final   ? 'done':''}" onclick="quickToggle('${t.id}','final',${!!t.final})"     title="${t.final   ? 'Final ✓'  :'Mark final'}"></span></td>
             <td${rs}><button class="btn-icon" onclick="showEditModal('${t.id}')" title="Edit">✏️</button></td>`;
 
         // First row — full data + first upload
@@ -732,6 +749,7 @@ function renderTable(transcripts) {
             <td${rs} class="${dueClass}">${dueText}</td>
             <td${rs}>${t.date_taken ? formatDate(t.date_taken) : '—'}</td>
             <td${rs}><span class="last-name">${t.last_name || '—'}</span></td>
+            <td${rs} style="font-size:12px; color:var(--text-muted)">${t.job_id || '—'}</td>
             <td${rs}>${t.pages ?? '—'}</td>
             <td${rs}>${t.agency || '—'}</td>
             <td class="upload-cell">${uploads[0] || ''}</td>
@@ -780,6 +798,7 @@ function showAddModal() {
     document.getElementById('modal-title').textContent = 'Add Transcript';
     document.getElementById('modal-id').value = '';
     document.getElementById('modal-last-name').value = '';
+    document.getElementById('modal-job-id').value = '';
     document.getElementById('modal-date-taken').value = '';
     document.getElementById('modal-due-date').value = '';
     document.getElementById('modal-pages').value = '';
@@ -805,6 +824,7 @@ function showEditModal(id) {
     document.getElementById('modal-title').textContent = 'Edit Transcript';
     document.getElementById('modal-id').value = id;
     document.getElementById('modal-last-name').value = t.last_name || '';
+    document.getElementById('modal-job-id').value = t.job_id || '';
     document.getElementById('modal-date-taken').value = t.date_taken || '';
     document.getElementById('modal-due-date').value = t.due_date || '';
     document.getElementById('modal-pages').value = t.pages ?? '';
@@ -855,21 +875,25 @@ async function saveTranscript() {
     }
 
     const dateTaken = document.getElementById('modal-date-taken').value;
+    const manualJobId = document.getElementById('modal-job-id').value.trim();
 
-    // Generate job_id from date + last name (matching Zapier format)
-    let jobId;
-    if (dateTaken) {
-        const d = new Date(dateTaken + 'T00:00:00');
-        const yy = String(d.getFullYear()).slice(2);
-        const mm = String(d.getMonth()+1).padStart(2,'0');
-        const dd = String(d.getDate()).padStart(2,'0');
-        jobId = `${yy}${mm}${dd}-${lastName}`;
-    } else {
-        jobId = `manual-${lastName}-${Date.now()}`;
+    // Use manually entered job_id if provided, otherwise auto-generate
+    let jobId = manualJobId;
+    if (!jobId) {
+        if (dateTaken) {
+            const d = new Date(dateTaken + 'T00:00:00');
+            const yy = String(d.getFullYear()).slice(2);
+            const mm = String(d.getMonth()+1).padStart(2,'0');
+            const dd = String(d.getDate()).padStart(2,'0');
+            jobId = `${yy}${mm}${dd}-${lastName}`;
+        } else {
+            jobId = `manual-${lastName}-${Date.now()}`;
+        }
     }
 
     const data = {
         last_name:  lastName,
+        job_id:     jobId,
         date_taken: dateTaken || null,
         due_date:   document.getElementById('modal-due-date').value || null,
         pages:      parseInt(document.getElementById('modal-pages').value) || null,
@@ -892,7 +916,6 @@ async function saveTranscript() {
         delete data.scoped_at; delete data.proofed_at; delete data.final_at; delete data.billed_at;
         ({ error } = await supabaseClient.from('transcripts').update(data).eq('id', editingId));
     } else {
-        data.job_id = jobId;
         ({ error } = await supabaseClient.from('transcripts').insert(data));
     }
 
