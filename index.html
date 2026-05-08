@@ -875,20 +875,17 @@ async function saveTranscript() {
     }
 
     const dateTaken = document.getElementById('modal-date-taken').value;
-    const manualJobId = document.getElementById('modal-job-id').value.trim();
 
-    // Use manually entered job_id if provided, otherwise auto-generate
-    let jobId = manualJobId;
-    if (!jobId) {
-        if (dateTaken) {
-            const d = new Date(dateTaken + 'T00:00:00');
-            const yy = String(d.getFullYear()).slice(2);
-            const mm = String(d.getMonth()+1).padStart(2,'0');
-            const dd = String(d.getDate()).padStart(2,'0');
-            jobId = `${yy}${mm}${dd}-${lastName}`;
-        } else {
-            jobId = `manual-${lastName}-${Date.now()}`;
-        }
+    // Auto-generate job_id silently for DB use (not shown in UI)
+    let jobId;
+    if (dateTaken) {
+        const d = new Date(dateTaken + 'T00:00:00');
+        const yy = String(d.getFullYear()).slice(2);
+        const mm = String(d.getMonth()+1).padStart(2,'0');
+        const dd = String(d.getDate()).padStart(2,'0');
+        jobId = `${yy}${mm}${dd}-${lastName}`;
+    } else {
+        jobId = `manual-${lastName}-${Date.now()}`;
     }
 
     const data = {
