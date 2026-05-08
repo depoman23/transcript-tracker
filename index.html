@@ -612,7 +612,7 @@ function subscribeToChanges() {
 // RENDERING
 // ============================================================
 function renderStats() {
-    const t = allTranscripts;
+    const t = allTranscripts.filter(x => !x.billed); // active jobs only
     const total = t.length;
     const scoped = t.filter(x => x.scoped).length;
     const proofed = t.filter(x => x.proofed).length;
