@@ -431,8 +431,8 @@
                     <th>Uploads</th>
                     <th title="Scoped">Sc</th>
                     <th title="Proofed">Pr</th>
-                    <th title="Billed">Bi</th>
                     <th title="Final">Fn</th>
+                    <th title="Billed">Bi</th>
                     <th></th>
                 </tr>
             </thead>
@@ -739,8 +739,8 @@ function renderTable(transcripts) {
         const waypointCells = `
             <td${rs}><span class="waypoint ${t.scoped  ? 'done':''}" onclick="quickToggle('${t.id}','scoped',${!!t.scoped})"   title="${t.scoped  ? 'Scoped ✓' :'Mark scoped'}"></span></td>
             <td${rs}><span class="waypoint ${t.proofed ? 'done':''}" onclick="quickToggle('${t.id}','proofed',${!!t.proofed})" title="${t.proofed ? 'Proofed ✓':'Mark proofed'}"></span></td>
-            <td${rs}><span class="waypoint ${t.billed  ? 'done':''}" onclick="quickToggle('${t.id}','billed',${!!t.billed})"   title="${t.billed  ? 'Billed ✓' :'Mark billed'}"></span></td>
             <td${rs}><span class="waypoint ${t.final   ? 'done':''}" onclick="quickToggle('${t.id}','final',${!!t.final})"     title="${t.final   ? 'Final ✓'  :'Mark final'}"></span></td>
+            <td${rs}><span class="waypoint ${t.billed  ? 'done':''}" onclick="quickToggle('${t.id}','billed',${!!t.billed})"   title="${t.billed  ? 'Billed ✓' :'Mark billed'}"></span></td>
             <td${rs}><button class="btn-icon" onclick="showEditModal('${t.id}')" title="Edit">✏️</button></td>`;
 
         // First row — full data + first upload
