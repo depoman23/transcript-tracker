@@ -6,15 +6,17 @@
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="default">
     <meta name="apple-mobile-web-app-title" content="Transcripts">
-    <meta name="theme-color" content="#4F46E5">
+    <meta name="theme-color" content="#F96302">
     <title>Transcript Tracker</title>
     <link rel="manifest" href="manifest.json">
     <style>
         *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
         :root {
-            --primary: #4F46E5;
-            --primary-dark: #3730A3;
+            --primary: #F96302;   /* Home Depot orange */
+            --primary-dark: #C24E00;
+            --pgs-manual: #DC2626; /* typed in by hand */
+            --pgs-txt: #16A34A;    /* ascertained from transcript TXT */
             --success: #10B981;
             --warning: #F59E0B;
             --danger: #EF4444;
@@ -43,7 +45,7 @@
             justify-content: center;
             min-height: 100vh;
             padding: 24px;
-            background: linear-gradient(135deg, #4F46E5 0%, #7C3AED 100%);
+            background: linear-gradient(135deg, #F96302 0%, #C24E00 100%);
         }
         .setup-card {
             background: white;
@@ -70,7 +72,7 @@
             position: sticky;
             top: 0;
             z-index: 100;
-            box-shadow: 0 2px 8px rgba(79,70,229,0.4);
+            box-shadow: 0 2px 8px rgba(249,99,2,0.4);
         }
         #header h1 { font-size: 17px; font-weight: 700; letter-spacing: -0.3px; }
         .header-actions { display: flex; gap: 8px; align-items: center; }
@@ -151,6 +153,9 @@
         tr.overdue td:nth-child(1) { color: var(--danger); font-weight: 600; }
 
         .last-name { font-weight: 600; }
+        .pgs-manual { color: var(--pgs-manual); font-weight: 600; }
+        .pgs-txt    { color: var(--pgs-txt);    font-weight: 600; }
+        tr.billed-row .pgs-manual, tr.billed-row .pgs-txt { color: #94A3B8; font-weight: 400; }
         .due-soon { color: var(--warning); font-weight: 600; }
 
         /* ---- WAYPOINTS IN TABLE ---- */
@@ -202,7 +207,7 @@
         input:focus, select:focus, textarea:focus {
             outline: none;
             border-color: var(--primary);
-            box-shadow: 0 0 0 3px rgba(79,70,229,0.1);
+            box-shadow: 0 0 0 3px rgba(249,99,2,0.15);
         }
         .form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
 
@@ -757,8 +762,8 @@ function renderTable(transcripts) {
             <td${rs} class="${dueClass}">${dueText}</td>
             <td${rs}>${t.date_taken ? formatDate(t.date_taken) : '—'}</td>
             <td${rs}><span class="last-name">${t.last_name || '—'}</span></td>
-            <td${rs}>${t.pages ?? '—'}</td>
-            <td${rs}>${t.r_pages ?? '—'}</td>
+            <td${rs} class="${pgsClass(t.pages_src)}">${t.pages ?? '—'}</td>
+            <td${rs} class="${pgsClass(t.r_pages_src)}">${t.r_pages ?? '—'}</td>
             <td${rs} style="font-size:12px; color:var(--text-muted)">${t.job_no || '—'}</td>
             <td${rs}>${t.agency || '—'}</td>
             <td class="upload-cell">${uploads[0] || ''}</td>
@@ -772,6 +777,13 @@ function renderTable(transcripts) {
 
         return html;
     }).join('');
+}
+
+// Page-count source → cell color. 'manual' = typed in the app (red); 'txt' = read from transcript TXT (green)
+function pgsClass(src) {
+    if (src === 'manual') return 'pgs-manual';
+    if (src === 'txt')    return 'pgs-txt';
+    return '';
 }
 
 function formatDate(dateStr) {
@@ -913,6 +925,16 @@ async function saveTranscript() {
         final:      modalWaypoints.final,
         billed:     modalWaypoints.billed,
     };
+
+    // Page-count provenance: anything typed/changed here is 'manual' (red).
+    // Values written by the TXT sync carry 'txt' (green) and are left alone unless edited.
+    const existing = editingId ? allTranscripts.find(x => x.id === editingId) : null;
+    if (!existing || (existing.pages ?? null) !== data.pages) {
+        data.pages_src = data.pages == null ? null : 'manual';
+    }
+    if (!existing || (existing.r_pages ?? null) !== data.r_pages) {
+        data.r_pages_src = data.r_pages == null ? null : 'manual';
+    }
 
     // Timestamps for newly checked waypoints
     const now = new Date().toISOString();
