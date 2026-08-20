@@ -425,7 +425,8 @@
                     <th onclick="sortBy('due_date', this)">Due Date</th>
                     <th onclick="sortBy('date_taken', this)">Date Taken</th>
                     <th onclick="sortBy('last_name', this)">Last Name</th>
-                    <th onclick="sortBy('pages', this)">Pgs</th>
+                    <th onclick="sortBy('pages', this)" title="Final pages">F-Pgs</th>
+                    <th onclick="sortBy('r_pages', this)" title="Rough pages">R-Pgs</th>
                     <th onclick="sortBy('job_no', this)">Job No.</th>
                     <th onclick="sortBy('agency', this)">Agency</th>
                     <th>Uploads</th>
@@ -437,7 +438,7 @@
                 </tr>
             </thead>
             <tbody id="table-body">
-                <tr><td colspan="12" class="loading-state">Loading transcripts...</td></tr>
+                <tr><td colspan="13" class="loading-state">Loading transcripts...</td></tr>
             </tbody>
         </table>
     </div>
@@ -481,9 +482,16 @@
 
         <div class="form-row">
             <div class="form-group">
-                <label>Pages</label>
+                <label>F-Pages</label>
                 <input type="number" id="modal-pages" placeholder="0" min="0" inputmode="numeric">
             </div>
+            <div class="form-group">
+                <label>R-Pages</label>
+                <input type="number" id="modal-r-pages" placeholder="0" min="0" inputmode="numeric">
+            </div>
+        </div>
+
+        <div class="form-row">
             <div class="form-group">
                 <label>Agency</label>
                 <input type="text" id="modal-agency" placeholder="MRGI, EWU..." list="agency-list" autocomplete="off">
@@ -588,7 +596,7 @@ function saveSetup() {
 // ============================================================
 async function loadTranscripts() {
     document.getElementById('table-body').innerHTML =
-        '<tr><td colspan="12" class="loading-state">Loading...</td></tr>';
+        '<tr><td colspan="13" class="loading-state">Loading...</td></tr>';
 
     const { data, error } = await supabaseClient
         .from('transcripts')
@@ -598,7 +606,7 @@ async function loadTranscripts() {
     if (error) {
         console.error('Load error:', error);
         document.getElementById('table-body').innerHTML =
-            `<tr><td colspan="12" class="empty-state"><span class="emoji">⚠️</span><p>Error loading data.<br><small>${error.message}</small></p></td></tr>`;
+            `<tr><td colspan="13" class="empty-state"><span class="emoji">⚠️</span><p>Error loading data.<br><small>${error.message}</small></p></td></tr>`;
         return;
     }
 
@@ -690,7 +698,7 @@ function renderTable(transcripts) {
 
     if (transcripts.length === 0) {
         tbody.innerHTML = `
-            <tr><td colspan="12" class="empty-state">
+            <tr><td colspan="13" class="empty-state">
                 <span class="emoji">📂</span>
                 <p>No transcripts found.</p>
             </td></tr>`;
@@ -731,7 +739,7 @@ function renderTable(transcripts) {
         }
 
         const dueText   = t.due_date ? formatDate(t.due_date) : '—';
-        const uploads   = Array.isArray(t.uploads) ? t.uploads : [];
+        const uploads   = (!t.billed && Array.isArray(t.uploads)) ? t.uploads : []; // hide uploads once billed
         const rowCount  = Math.max(1, uploads.length);
         const rs        = rowCount > 1 ? ` rowspan="${rowCount}"` : '';
 
@@ -750,6 +758,7 @@ function renderTable(transcripts) {
             <td${rs}>${t.date_taken ? formatDate(t.date_taken) : '—'}</td>
             <td${rs}><span class="last-name">${t.last_name || '—'}</span></td>
             <td${rs}>${t.pages ?? '—'}</td>
+            <td${rs}>${t.r_pages ?? '—'}</td>
             <td${rs} style="font-size:12px; color:var(--text-muted)">${t.job_no || '—'}</td>
             <td${rs}>${t.agency || '—'}</td>
             <td class="upload-cell">${uploads[0] || ''}</td>
@@ -802,6 +811,7 @@ function showAddModal() {
     document.getElementById('modal-date-taken').value = '';
     document.getElementById('modal-due-date').value = '';
     document.getElementById('modal-pages').value = '';
+    document.getElementById('modal-r-pages').value = '';
     document.getElementById('modal-agency').value = '';
     document.getElementById('modal-notes').value = '';
     document.getElementById('delete-btn').classList.add('hidden');
@@ -828,6 +838,7 @@ function showEditModal(id) {
     document.getElementById('modal-date-taken').value = t.date_taken || '';
     document.getElementById('modal-due-date').value = t.due_date || '';
     document.getElementById('modal-pages').value = t.pages ?? '';
+    document.getElementById('modal-r-pages').value = t.r_pages ?? '';
     document.getElementById('modal-agency').value = t.agency || '';
     document.getElementById('modal-notes').value = t.notes || '';
     document.getElementById('delete-btn').classList.remove('hidden');
@@ -894,6 +905,7 @@ async function saveTranscript() {
         date_taken: dateTaken || null,
         due_date:   document.getElementById('modal-due-date').value || null,
         pages:      parseInt(document.getElementById('modal-pages').value) || null,
+        r_pages:    parseInt(document.getElementById('modal-r-pages').value) || null,
         agency:     document.getElementById('modal-agency').value.trim() || null,
         notes:      document.getElementById('modal-notes').value.trim() || null,
         scoped:     modalWaypoints.scoped,
