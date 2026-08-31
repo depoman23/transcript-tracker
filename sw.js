@@ -1,7 +1,7 @@
 // Transcript Tracker — Service Worker
 // Enables PWA installation on iOS and Windows
 
-const CACHE_NAME = 'transcript-tracker-v4';
+const CACHE_NAME = 'transcript-tracker-v5';
 const STATIC_URLS = ['/index.html', '/manifest.json', '/sw.js'];
 
 self.addEventListener('install', event => {

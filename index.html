@@ -391,7 +391,7 @@
 
         <div class="form-group">
             <label>Supabase Project URL</label>
-            <input type="url" id="setup-url" placeholder="https://xxxxxxxxxxxx.supabase.co" autocomplete="off" autocorrect="off" spellcheck="false">
+            <input type="url" id="setup-url" placeholder="https://xxxxxxxxxxxx.supabase.co" autocomplete="off" autocorrect="off" spellcheck="false" value="https://ykleicberiunmayhvfzi.supabase.co">
         </div>
         <div class="form-group">
             <label>Supabase Anon Key</label>
@@ -558,9 +558,14 @@ let sortDir = 'desc';
 // ============================================================
 // INIT & SETUP
 // ============================================================
+// Baked-in connection for the MRGI Tracker project. The anon (publishable)
+// key is safe to ship in the client; row access is governed by RLS.
+const DEFAULT_SB_URL = 'https://ykleicberiunmayhvfzi.supabase.co';
+const DEFAULT_SB_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InlrbGVpY2Jlcml1bm1heWh2ZnppIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzU3NDUyNTksImV4cCI6MjA5MTMyMTI1OX0.00thVajBVsAt8iWXc3z5MX1wMu0YI301lSeO1DRhhA4';
+
 function init() {
-    const url = localStorage.getItem('tt_sb_url');
-    const key = localStorage.getItem('tt_sb_key');
+    const url = localStorage.getItem('tt_sb_url') || DEFAULT_SB_URL;
+    const key = localStorage.getItem('tt_sb_key') || DEFAULT_SB_KEY;
 
     if (!url || !key) {
         document.getElementById('setup-screen').classList.remove('hidden');
