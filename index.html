@@ -715,23 +715,23 @@ function renderTable(transcripts) {
         return;
     }
 
-    // Active rows: sort by due_date ascending (soonest first, nulls last)
-    const active = transcripts.filter(t => !t.billed)
-        .sort((a, b) => {
-            if (!a.due_date && !b.due_date) return 0;
-            if (!a.due_date) return 1;
-            if (!b.due_date) return -1;
-            return a.due_date.localeCompare(b.due_date);
-        });
+    // Row order (both groups): 1) Due Date newest first, 2) Date Taken newest first,
+    // 3) Last Name A-Z, natural numbers (Valve-4 before Valve-5 before Valve-10). Blanks last.
+    const nameCollator = new Intl.Collator('en', { numeric: true, sensitivity: 'base' });
+    const byDateDesc = (x, y) => {
+        if (!x && !y) return 0;
+        if (!x) return 1;
+        if (!y) return -1;
+        return y.localeCompare(x);
+    };
+    const rowOrder = (a, b) =>
+        byDateDesc(a.due_date, b.due_date) ||
+        byDateDesc(a.date_taken, b.date_taken) ||
+        nameCollator.compare(a.last_name || '', b.last_name || '');
 
-    // Billed rows: sort by date_taken descending (newest first, nulls last)
-    const billed = transcripts.filter(t => t.billed)
-        .sort((a, b) => {
-            if (!a.date_taken && !b.date_taken) return 0;
-            if (!a.date_taken) return 1;
-            if (!b.date_taken) return -1;
-            return b.date_taken.localeCompare(a.date_taken);
-        });
+    // Active rows first, then billed rows sink below — same ordering in each group
+    const active = transcripts.filter(t => !t.billed).sort(rowOrder);
+    const billed = transcripts.filter(t => t.billed).sort(rowOrder);
 
     const ordered = [...active, ...billed];
 
