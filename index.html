@@ -715,7 +715,7 @@ function renderTable(transcripts) {
         return;
     }
 
-    // Row order (both groups): 1) Due Date newest first, 2) Date Taken oldest first,
+    // Row order (both groups): 1) Due Date soonest first, 2) Date Taken oldest first,
     // 3) Last Name A-Z, natural numbers (Valve-4 before Valve-5 before Valve-10). Blanks last.
     const nameCollator = new Intl.Collator('en', { numeric: true, sensitivity: 'base' });
     const byDateDesc = (x, y) => {
@@ -731,7 +731,7 @@ function renderTable(transcripts) {
         return x.localeCompare(y);
     };
     const rowOrder = (a, b) =>
-        byDateDesc(a.due_date, b.due_date) ||
+        byDateAsc(a.due_date, b.due_date) ||
         byDateAsc(a.date_taken, b.date_taken) ||
         nameCollator.compare(a.last_name || '', b.last_name || '');
 
