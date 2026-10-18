@@ -335,6 +335,13 @@ let currentTab = 'active';
 try { currentTab = localStorage.getItem('tt_tab') || 'active'; } catch (e) {}
 
 const WAYPOINTS = ['scoped', 'proofed', 'final', 'billed'];
+// Keep password managers (Dashlane, LastPass, 1Password) from badging these fields — none are logins
+document.querySelectorAll('input, textarea').forEach(el => {
+    el.setAttribute('data-form-type', 'other');   // Dashlane
+    el.setAttribute('data-lpignore', 'true');     // LastPass
+    el.setAttribute('data-1p-ignore', '');        // 1Password
+    el.setAttribute('autocomplete', 'off');
+});
 const CHECK_SVG = '<svg width="12" height="12" viewBox="0 0 12 12" aria-hidden="true"><path d="M2.5 6.3l2.3 2.3L9.6 3.6" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" fill="none"/></svg>';
 const CHEV_SVG  = '<svg class="chev" width="8" height="13" viewBox="0 0 8 13" aria-hidden="true"><path d="M1.5 1.5l5 5-5 5" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" fill="none"/></svg>';
 
