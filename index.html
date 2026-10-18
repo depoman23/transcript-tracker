@@ -2,403 +2,226 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="default">
     <meta name="apple-mobile-web-app-title" content="Transcripts">
-    <meta name="theme-color" content="#F96302">
+    <meta name="theme-color" content="#F2F2F7">
     <title>Transcript Tracker</title>
     <link rel="manifest" href="manifest.json">
     <style>
         *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
         :root {
-            --primary: #F96302;   /* Home Depot orange */
-            --primary-dark: #C24E00;
-            --pgs-manual: #DC2626; /* typed in by hand */
-            --pgs-txt: #16A34A;    /* ascertained from transcript TXT */
-            --success: #10B981;
-            --warning: #F59E0B;
-            --danger: #EF4444;
-            --bg: #F1F5F9;
+            --tint: #F96302;        /* Home Depot orange */
+            --tint-text: #C24E00;   /* orange dark enough for text */
+            --bg: #F2F2F7;
             --card: #FFFFFF;
-            --text: #1E293B;
-            --text-muted: #64748B;
-            --border: #E2E8F0;
-            --radius: 8px;
-            --shadow: 0 1px 3px rgba(0,0,0,0.1), 0 1px 2px rgba(0,0,0,0.06);
+            --label: #1C1C1E;
+            --label2: #3A3A3C;
+            --label3: #6C6C70;
+            --label4: #8E8E93;
+            --sep: rgba(60,60,67,0.18);
+            --fill: rgba(118,118,128,0.12);
+            --pgs-txt: #248A3D;     /* page count read from transcript TXT */
+            --pgs-manual: #D70015;  /* page count typed in by hand */
+            --g: #248A3D; --g-bg: rgba(52,199,89,0.12);
+            --y: #9A6B00; --y-bg: rgba(255,204,0,0.20);
+            --o: #C93400; --o-bg: rgba(255,149,0,0.14);
+            --r: #D70015; --r-bg: rgba(255,59,48,0.12);
         }
 
+        html { -webkit-text-size-adjust: 100%; }
         body {
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Text', 'Helvetica Neue', 'Segoe UI', system-ui, sans-serif;
+            -webkit-font-smoothing: antialiased;
             background: var(--bg);
-            color: var(--text);
+            color: var(--label);
             min-height: 100vh;
-            font-size: 14px;
+            font-size: 15px;
+            letter-spacing: -0.01em;
         }
+        button { font-family: inherit; }
+        .hidden { display: none !important; }
+        .sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+        .num { font-variant-numeric: tabular-nums; }
 
         /* ---- SETUP SCREEN ---- */
-        #setup-screen {
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            justify-content: center;
-            min-height: 100vh;
-            padding: 24px;
-            background: linear-gradient(135deg, #F96302 0%, #C24E00 100%);
-        }
-        .setup-card {
-            background: white;
-            border-radius: 16px;
-            padding: 32px;
-            width: 100%;
-            max-width: 420px;
-            box-shadow: 0 20px 60px rgba(0,0,0,0.2);
-        }
-        .setup-logo { font-size: 40px; margin-bottom: 12px; }
-        .setup-card h1 { font-size: 22px; margin-bottom: 6px; color: var(--text); }
-        .setup-card p { color: var(--text-muted); margin-bottom: 24px; font-size: 14px; line-height: 1.5; }
-        .setup-hint { margin-top: 14px; font-size: 12px; color: var(--text-muted); text-align: center; }
-        .setup-hint a { color: var(--primary); text-decoration: none; }
+        #setup-screen { min-height: 100vh; display: flex; align-items: center; justify-content: center; padding: 24px; }
+        .setup-card { background: var(--card); border-radius: 18px; padding: 28px; width: 100%; max-width: 420px; }
+        .setup-card h1 { font-size: 28px; font-weight: 700; margin-bottom: 6px; }
+        .setup-card p { color: var(--label3); margin-bottom: 22px; line-height: 1.45; }
+        .setup-hint { margin-top: 14px; font-size: 13px; color: var(--label3); text-align: center; }
 
-        /* ---- HEADER ---- */
-        #header {
-            background: var(--primary);
-            color: white;
-            padding: 12px 16px;
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-            position: sticky;
-            top: 0;
-            z-index: 100;
-            box-shadow: 0 2px 8px rgba(249,99,2,0.4);
+        /* ---- NAV BAR ---- */
+        #nav {
+            position: sticky; top: 0; z-index: 50;
+            background: rgba(242,242,247,0.82);
+            backdrop-filter: saturate(180%) blur(20px);
+            -webkit-backdrop-filter: saturate(180%) blur(20px);
+            border-bottom: 0.5px solid var(--sep);
+            padding-top: env(safe-area-inset-top);
         }
-        #header h1 { font-size: 17px; font-weight: 700; letter-spacing: -0.3px; }
-        .header-actions { display: flex; gap: 8px; align-items: center; }
-        /* ---- STATS ---- */
-        #stats-bar {
-            display: flex;
-            gap: 8px;
-            padding: 12px 16px 8px;
-            overflow-x: auto;
+        .nav-inner { max-width: 920px; margin: 0 auto; padding: 10px 20px; display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+        .brand { display: flex; align-items: center; gap: 8px; font-size: 15px; font-weight: 600; }
+        .brand-mark { width: 10px; height: 10px; border-radius: 3px; background: var(--tint); }
+        .btn-new {
+            display: flex; align-items: center; gap: 6px; min-height: 36px; padding: 0 14px;
+            border: none; border-radius: 18px; background: var(--tint); color: #fff;
+            font-size: 15px; font-weight: 600; cursor: pointer;
+        }
+        .btn-new:active { opacity: 0.8; }
+
+        main { max-width: 920px; margin: 0 auto; padding: 20px 20px 64px; display: flex; flex-direction: column; gap: 22px; }
+        .eyebrow { font-size: 13px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.02em; color: var(--label3); }
+        .large-title { font-size: 34px; line-height: 41px; font-weight: 700; letter-spacing: 0.01em; }
+
+        /* ---- SUMMARY CARDS ---- */
+        #stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 12px; }
+        .stat { background: var(--card); border-radius: 16px; padding: 14px 16px; display: flex; flex-direction: column; gap: 6px; }
+        .stat-lbl { font-size: 13px; font-weight: 600; color: var(--label3); }
+        .stat-val { font-size: 28px; line-height: 32px; font-weight: 700; font-variant-numeric: tabular-nums; }
+        .stat-sub { font-size: 12px; color: var(--label4); }
+
+        /* ---- SEGMENTED CONTROL + SEARCH ---- */
+        .controls { display: flex; flex-wrap: wrap; gap: 12px; align-items: center; }
+        .segmented { display: flex; background: var(--fill); border-radius: 9px; padding: 2px; }
+        .segmented button {
+            min-width: 80px; min-height: 32px; padding: 0 14px; border: none; border-radius: 7px;
+            font-size: 13px; font-weight: 500; color: var(--label2); background: transparent; cursor: pointer;
+        }
+        .segmented button[aria-selected="true"] {
+            background: #fff; color: var(--label); font-weight: 600;
+            box-shadow: 0 3px 8px rgba(0,0,0,0.12), 0 1px 1px rgba(0,0,0,0.04);
+        }
+        .search { flex: 1 1 240px; display: flex; align-items: center; gap: 6px; height: 36px; padding: 0 10px; background: var(--fill); border-radius: 10px; }
+        .search input { flex: 1; min-width: 0; border: none; background: transparent; font-size: 16px; color: var(--label); outline: none; font-family: inherit; -webkit-appearance: none; }
+        .search input::placeholder { color: var(--label4); }
+        .search input::-webkit-search-cancel-button { -webkit-appearance: none; }
+
+        /* ---- SECTIONS / LISTS ---- */
+        section { display: flex; flex-direction: column; gap: 6px; }
+        .section-hdr { margin-left: 16px; font-size: 13px; font-weight: 400; text-transform: uppercase; letter-spacing: 0.02em; color: var(--label3); }
+        .group { background: var(--card); border-radius: 14px; overflow: hidden; }
+        .empty { padding: 28px 16px; text-align: center; color: var(--label4); }
+
+        /* active job card */
+        .job { padding: 16px; display: flex; gap: 14px; align-items: flex-start; cursor: pointer; }
+        .job + .job { box-shadow: inset 0 0.5px 0 var(--sep); }
+        .job:hover { background: #FAFAFC; }
+        .ring {
+            width: 52px; height: 52px; flex: 0 0 auto; border-radius: 26px; border: 3px solid;
+            display: flex; flex-direction: column; align-items: center; justify-content: center;
+        }
+        .ring-n { font-size: 17px; line-height: 18px; font-weight: 700; font-variant-numeric: tabular-nums; }
+        .ring-u { font-size: 9px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.04em; }
+        .lvl-g { color: var(--g); } .ring.lvl-g { border-color: var(--g); background: var(--g-bg); }
+        .lvl-y { color: var(--y); } .ring.lvl-y { border-color: var(--y); background: var(--y-bg); }
+        .lvl-o { color: var(--o); } .ring.lvl-o { border-color: var(--o); background: var(--o-bg); }
+        .lvl-r { color: var(--r); } .ring.lvl-r { border-color: var(--r); background: var(--r-bg); }
+        .lvl-n { color: var(--label4); } .ring.lvl-n { border-color: #C7C7CC; background: #F2F2F7; }
+
+        .job-body { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 3px; }
+        .job-top { display: flex; justify-content: space-between; align-items: baseline; gap: 12px; flex-wrap: wrap; }
+        .job-name { font-size: 17px; font-weight: 600; }
+        .job-due { font-size: 15px; font-weight: 600; font-variant-numeric: tabular-nums; }
+        .job-sub { font-size: 15px; color: var(--label3); }
+        .job-notes { font-size: 13px; color: var(--label3); font-style: italic; }
+        .job-meta { display: flex; gap: 14px; flex-wrap: wrap; align-items: center; font-size: 13px; color: var(--label2); font-variant-numeric: tabular-nums; margin-top: 2px; }
+        .pg { display: inline-flex; align-items: center; gap: 5px; }
+        .dot { width: 8px; height: 8px; border-radius: 4px; background: #C7C7CC; flex: 0 0 auto; }
+        .dot.txt { background: var(--pgs-txt); }
+        .dot.manual { background: var(--pgs-manual); }
+        .upload { font-family: ui-monospace, 'SF Mono', Menlo, Consolas, monospace; font-size: 12px; color: var(--label3); background: var(--bg); border-radius: 6px; padding: 1px 6px; word-break: break-all; }
+        .steps { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 10px; }
+        .step {
+            display: inline-flex; align-items: center; gap: 5px; min-height: 32px; padding: 0 12px;
+            border-radius: 16px; font-size: 13px; font-weight: 600; cursor: pointer;
+            border: 1px solid var(--sep); background: #fff; color: var(--label2);
+        }
+        .step svg { display: none; }
+        .step[aria-pressed="true"] { background: var(--tint); border-color: var(--tint); color: #fff; }
+        .step[aria-pressed="true"] svg { display: block; }
+        .step:active { transform: scale(0.97); }
+
+        /* billed rows */
+        .billed { display: flex; align-items: center; gap: 12px; padding: 6px 12px 6px 16px; min-height: 56px; cursor: pointer; }
+        .billed + .billed { box-shadow: inset 60px 0.5px 0 -59.5px var(--sep); }
+        .billed:hover { background: #FAFAFC; }
+        .billed-check { width: 28px; height: 28px; border-radius: 14px; background: #E5E5EA; color: var(--label4); display: flex; align-items: center; justify-content: center; flex: 0 0 auto; }
+        .billed-body { flex: 1; min-width: 0; }
+        .billed-name { font-size: 17px; color: var(--label2); }
+        .billed-sub { font-size: 13px; color: var(--label4); }
+        .billed-pgs { font-size: 15px; color: var(--label4); font-variant-numeric: tabular-nums; text-align: right; white-space: nowrap; }
+        .chev { color: #C7C7CC; flex: 0 0 auto; }
+
+        .legend { display: flex; gap: 18px; flex-wrap: wrap; justify-content: center; font-size: 12px; color: var(--label3); padding-top: 4px; }
+        .legend span { display: inline-flex; align-items: center; gap: 6px; }
+
+        /* ---- SHEET (add / edit) ---- */
+        .overlay {
+            position: fixed; inset: 0; z-index: 1000; background: rgba(0,0,0,0.35);
+            display: flex; align-items: flex-end; justify-content: center;
+        }
+        @media (min-width: 600px) { .overlay { align-items: center; padding: 24px; } }
+        .sheet {
+            background: var(--bg); width: 100%; max-height: 92vh; overflow-y: auto;
+            border-radius: 14px 14px 0 0; padding: 8px 0 calc(28px + env(safe-area-inset-bottom));
             -webkit-overflow-scrolling: touch;
         }
-        #stats-bar::-webkit-scrollbar { display: none; }
-        .stat-chip {
-            background: var(--card);
-            border-radius: 10px;
-            padding: 8px 14px;
-            white-space: nowrap;
-            box-shadow: var(--shadow);
-            border: 1px solid var(--border);
-            text-align: center;
-            min-width: 64px;
-        }
-        .stat-chip .stat-num { font-size: 20px; font-weight: 700; display: block; line-height: 1; }
-        .stat-chip .stat-lbl { font-size: 10px; text-transform: uppercase; letter-spacing: 0.05em; color: var(--text-muted); margin-top: 2px; display: block; }
+        @media (min-width: 600px) { .sheet { max-width: 520px; border-radius: 14px; padding-bottom: 20px; } }
+        .grabber { width: 36px; height: 5px; border-radius: 3px; background: #C7C7CC; margin: 0 auto 6px; }
+        @media (min-width: 600px) { .grabber { display: none; } }
+        .sheet-bar { display: grid; grid-template-columns: 1fr auto 1fr; align-items: center; padding: 6px 8px 12px; }
+        .sheet-bar h2 { font-size: 17px; font-weight: 600; text-align: center; }
+        .bar-btn { min-height: 44px; padding: 0 10px; border: none; background: none; color: var(--tint-text); font-size: 17px; cursor: pointer; }
+        .bar-btn.save { font-weight: 600; justify-self: end; }
+        .bar-btn.cancel { justify-self: start; }
 
-        /* ---- SEARCH & FILTERS ---- */
-        #search-bar { padding: 4px 16px 6px; }
-        #search-input {
-            width: 100%;
-            padding: 8px 14px;
-            border: 1px solid var(--border);
-            border-radius: 20px;
-            font-size: 14px;
-            background: white;
-            font-family: inherit;
+        .form-hdr { margin: 18px 32px 6px; font-size: 13px; text-transform: uppercase; letter-spacing: 0.02em; color: var(--label3); }
+        .form-group { background: var(--card); border-radius: 12px; margin: 0 16px; overflow: hidden; }
+        .field { display: flex; align-items: center; gap: 12px; min-height: 46px; padding: 0 16px; }
+        .field + .field { border-top: 0.5px solid var(--sep); }
+        .field label { flex: 0 0 110px; font-size: 17px; color: var(--label); }
+        .field input, .field textarea {
+            flex: 1; min-width: 0; border: none; outline: none; background: transparent;
+            font-size: 17px; font-family: inherit; color: var(--label); text-align: right; -webkit-appearance: none;
         }
-        #search-input:focus { outline: none; border-color: var(--primary); }
+        .field input::placeholder, .field textarea::placeholder { color: #C7C7CC; }
+        .field.notes { align-items: flex-start; padding: 12px 16px; }
+        .field textarea { text-align: left; resize: vertical; min-height: 44px; }
+        .field input[type=date] { min-height: 44px; }
 
-        /* ---- TABLE ---- */
-        .table-wrap {
-            overflow-x: auto;
-            padding: 0 16px 80px;
-            -webkit-overflow-scrolling: touch;
-        }
-        table {
-            width: 100%;
-            border-collapse: collapse;
-            background: var(--card);
-            border-radius: var(--radius);
-            overflow: hidden;
-            box-shadow: var(--shadow);
-            min-width: 580px;
-        }
-        th {
-            background: #F8FAFC;
-            padding: 9px 10px;
-            text-align: left;
-            font-weight: 600;
-            font-size: 10px;
-            text-transform: uppercase;
-            letter-spacing: 0.06em;
-            color: var(--text-muted);
-            border-bottom: 1px solid var(--border);
-            white-space: nowrap;
-            user-select: none;
-            cursor: pointer;
-        }
-        th:hover { background: #F0F4F8; }
-        th.sorted-asc::after { content: ' ↑'; }
-        th.sorted-desc::after { content: ' ↓'; }
-        td {
-            padding: 9px 10px;
-            border-bottom: 1px solid #F1F5F9;
-            vertical-align: middle;
-        }
-        tr:last-child td { border-bottom: none; }
-        tr:hover td { background: #FAFBFD; }
-        tr.overdue td:nth-child(1) { color: var(--danger); font-weight: 600; }
+        .toggle-row { display: flex; align-items: center; justify-content: space-between; min-height: 46px; padding: 0 16px; font-size: 17px; }
+        .toggle-row + .toggle-row { border-top: 0.5px solid var(--sep); }
+        .switch { position: relative; width: 51px; height: 31px; flex: 0 0 auto; }
+        .switch input { position: absolute; inset: 0; opacity: 0; margin: 0; cursor: pointer; z-index: 1; }
+        .switch .track { position: absolute; inset: 0; border-radius: 16px; background: #E9E9EB; transition: background 0.2s; }
+        .switch .knob { position: absolute; top: 2px; left: 2px; width: 27px; height: 27px; border-radius: 14px; background: #fff; box-shadow: 0 3px 8px rgba(0,0,0,0.15), 0 1px 1px rgba(0,0,0,0.16); transition: transform 0.2s; }
+        .switch input:checked + .track { background: var(--tint); }
+        .switch input:checked + .track + .knob { transform: translateX(20px); }
+        .switch input:focus-visible + .track { outline: 2px solid var(--tint-text); outline-offset: 2px; }
 
-        .last-name { font-weight: 600; }
-        .pgs-manual { color: var(--pgs-manual); font-weight: 600; }
-        .pgs-txt    { color: var(--pgs-txt);    font-weight: 600; }
-        tr.billed-row .pgs-manual, tr.billed-row .pgs-txt { color: #94A3B8; font-weight: 400; }
-        .due-soon { color: var(--warning); font-weight: 600; }
+        .delete-btn { display: block; width: calc(100% - 32px); margin: 24px 16px 0; min-height: 46px; border: none; border-radius: 12px; background: var(--card); color: #D70015; font-size: 17px; cursor: pointer; }
 
-        /* ---- WAYPOINTS IN TABLE ---- */
-        .waypoint {
-            display: inline-flex;
-            align-items: center;
-            justify-content: center;
-            width: 24px;
-            height: 24px;
-            border-radius: 50%;
-            border: 2px solid #CBD5E1;
-            cursor: pointer;
-            transition: all 0.12s;
-            font-size: 12px;
-            font-weight: 700;
-            color: transparent;
-        }
-        .waypoint:hover { border-color: var(--success); background: #ECFDF5; }
-        .waypoint.done {
-            background: var(--success);
-            border-color: var(--success);
-            color: white;
-        }
-        .waypoint.done::before { content: '✓'; }
-
-        /* ---- FORMS ---- */
-        .form-group { margin-bottom: 14px; }
-        label {
-            display: block;
-            font-size: 11px;
-            font-weight: 700;
-            margin-bottom: 5px;
-            color: var(--text-muted);
-            text-transform: uppercase;
-            letter-spacing: 0.05em;
-        }
-        input[type=text], input[type=url], input[type=date], input[type=number],
-        input[type=search], select, textarea {
-            width: 100%;
-            padding: 10px 12px;
-            border: 1px solid var(--border);
-            border-radius: var(--radius);
-            font-size: 14px;
-            font-family: inherit;
-            background: white;
-            transition: border-color 0.12s;
-            -webkit-appearance: none;
-        }
-        input:focus, select:focus, textarea:focus {
-            outline: none;
-            border-color: var(--primary);
-            box-shadow: 0 0 0 3px rgba(249,99,2,0.15);
-        }
-        .form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
-
-        /* ---- BUTTONS ---- */
-        .btn {
-            padding: 10px 18px;
-            border-radius: var(--radius);
-            font-size: 14px;
-            font-weight: 600;
-            cursor: pointer;
-            border: none;
-            transition: all 0.12s;
-            font-family: inherit;
-        }
-        .btn-primary { background: var(--primary); color: white; }
-        .btn-primary:hover { background: var(--primary-dark); }
-        .btn-primary:active { transform: scale(0.98); }
-        .btn-secondary { background: var(--bg); color: var(--text); border: 1px solid var(--border); }
-        .btn-danger { background: #FEF2F2; color: var(--danger); border: 1px solid #FECACA; }
-        .btn-icon {
-            padding: 6px 8px;
-            background: none;
-            border: none;
-            cursor: pointer;
-            color: var(--text-muted);
-            border-radius: 6px;
-            font-size: 15px;
-            transition: background 0.12s;
-        }
-        .btn-icon:hover { background: var(--bg); }
-        .btn-header {
-            background: rgba(255,255,255,0.18);
-            color: white;
-            border: none;
-            padding: 7px 14px;
-            border-radius: var(--radius);
-            font-size: 13px;
-            font-weight: 600;
-            cursor: pointer;
-            font-family: inherit;
-            transition: background 0.12s;
-        }
-        .btn-header:hover { background: rgba(255,255,255,0.28); }
-
-        /* ---- MODAL ---- */
-        .modal-overlay {
-            position: fixed;
-            inset: 0;
-            background: rgba(0,0,0,0.45);
-            display: flex;
-            align-items: flex-end;
-            justify-content: center;
-            z-index: 1000;
-            backdrop-filter: blur(2px);
-        }
-        @media (min-width: 600px) {
-            .modal-overlay { align-items: center; padding: 24px; }
-        }
-        .modal {
-            background: white;
-            border-radius: 20px 20px 0 0;
-            width: 100%;
-            max-height: 92vh;
-            overflow-y: auto;
-            padding: 20px 20px 32px;
-            -webkit-overflow-scrolling: touch;
-        }
-        @media (min-width: 600px) {
-            .modal { border-radius: 14px; max-width: 500px; padding: 24px; }
-        }
-        .modal-handle {
-            width: 36px; height: 4px;
-            background: var(--border);
-            border-radius: 2px;
-            margin: 0 auto 16px;
-        }
-        @media (min-width: 600px) { .modal-handle { display: none; } }
-        .modal-header {
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-            margin-bottom: 18px;
-        }
-        .modal-header h2 { font-size: 18px; font-weight: 700; }
-        .modal-footer {
-            display: flex;
-            gap: 8px;
-            justify-content: flex-end;
-            margin-top: 18px;
-            padding-top: 16px;
-            border-top: 1px solid var(--border);
-        }
-
-        /* ---- WAYPOINTS IN MODAL ---- */
-        .waypoints-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; }
-        .waypoint-toggle {
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            gap: 6px;
-            padding: 10px 6px;
-            border: 2px solid var(--border);
-            border-radius: var(--radius);
-            cursor: pointer;
-            transition: all 0.12s;
-            user-select: none;
-            background: white;
-        }
-        .waypoint-toggle:hover { border-color: #A7F3D0; background: #F0FDF4; }
-        .waypoint-toggle.active { border-color: var(--success); background: #ECFDF5; }
-        .wp-icon {
-            width: 28px; height: 28px;
-            border-radius: 50%;
-            border: 2px solid var(--border);
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-size: 13px;
-            font-weight: 700;
-            color: transparent;
-        }
-        .waypoint-toggle.active .wp-icon {
-            background: var(--success);
-            border-color: var(--success);
-            color: white;
-        }
-        .waypoint-toggle.active .wp-icon::before { content: '✓'; }
-        .wp-label { font-size: 11px; font-weight: 700; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.04em; }
-        .waypoint-toggle.active .wp-label { color: #059669; }
-
-        /* ---- UPLOADS COLUMN ---- */
-        .upload-cell {
-            font-size: 11px;
-            color: var(--text-muted);
-            font-family: 'SF Mono', 'Consolas', monospace;
-            max-width: 220px;
-            word-break: break-all;
-            line-height: 1.4;
-        }
-        tr.upload-extra-row td {
-            padding-top: 2px;
-            padding-bottom: 4px;
-            border-bottom: none;
-        }
-        tr.upload-extra-row + tr td { border-top: 1px solid #F1F5F9; }
-
-        /* ---- BILLED ROWS ---- */
-        tr.billed-row td { color: #94A3B8; background: #F8FAFC; }
-        tr.billed-row:hover td { background: #F1F5F9; }
-        tr.billed-row .last-name { font-weight: 400; }
-        tr.billed-row .waypoint.done { background: #CBD5E1; border-color: #CBD5E1; }
-        tr.billed-row .waypoint:not(.done) { border-color: #E2E8F0; }
-        tr.billed-row .btn-icon { opacity: 0.5; }
-
-        /* ---- EMPTY & LOADING ---- */
-        .empty-state, .loading-state {
-            text-align: center;
-            padding: 48px 24px;
-            color: var(--text-muted);
-        }
-        .empty-state .emoji { font-size: 36px; display: block; margin-bottom: 12px; }
-        .empty-state p { font-size: 14px; }
-
-        /* ---- UTILITIES ---- */
-        .hidden { display: none !important; }
-        ::-webkit-scrollbar { width: 4px; height: 4px; }
-        ::-webkit-scrollbar-track { background: transparent; }
-        ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 2px; }
+        .loading { padding: 40px 16px; text-align: center; color: var(--label4); }
+        .error { padding: 28px 16px; text-align: center; color: #D70015; }
     </style>
 </head>
 <body>
 
 <!-- ============================================================ -->
-<!-- SETUP SCREEN -->
+<!-- SETUP SCREEN (only if no Supabase connection is available) -->
 <!-- ============================================================ -->
 <div id="setup-screen" class="hidden">
     <div class="setup-card">
-        <div class="setup-logo">📋</div>
-        <h1>Transcript Tracker</h1>
+        <h1>Transcripts</h1>
         <p>Connect your Supabase database to get started. You'll only need to do this once per device.</p>
-
-        <div class="form-group">
-            <label>Supabase Project URL</label>
-            <input type="url" id="setup-url" placeholder="https://xxxxxxxxxxxx.supabase.co" autocomplete="off" autocorrect="off" spellcheck="false" value="https://ykleicberiunmayhvfzi.supabase.co">
+        <div class="form-group" style="margin:0">
+            <div class="field"><label for="setup-url">URL</label><input type="url" id="setup-url" autocomplete="off" autocorrect="off" spellcheck="false" value="https://ykleicberiunmayhvfzi.supabase.co"></div>
+            <div class="field"><label for="setup-key">Anon key</label><input type="text" id="setup-key" placeholder="eyJhbGci..." autocomplete="off" autocorrect="off" spellcheck="false"></div>
         </div>
-        <div class="form-group">
-            <label>Supabase Anon Key</label>
-            <input type="text" id="setup-key" placeholder="eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..." autocomplete="off" autocorrect="off" spellcheck="false">
-        </div>
-        <button class="btn btn-primary" style="width:100%; padding:12px" onclick="saveSetup()">Connect &amp; Open App</button>
-
+        <button class="btn-new" style="width:100%; justify-content:center; margin-top:18px; min-height:46px; border-radius:12px" onclick="saveSetup()">Connect</button>
         <p class="setup-hint">Find these in Supabase: <strong>Settings → API</strong></p>
     </div>
 </div>
@@ -407,136 +230,93 @@
 <!-- MAIN APP -->
 <!-- ============================================================ -->
 <div id="app" class="hidden">
-
-    <div id="header">
-        <h1>📋 Transcript Tracker</h1>
-        <div class="header-actions">
-            <button class="btn-header" onclick="showAddModal()">+ New</button>
+    <header id="nav">
+        <div class="nav-inner">
+            <div class="brand"><span class="brand-mark" aria-hidden="true"></span>MRGI</div>
+            <button class="btn-new" onclick="showAddModal()">
+                <svg width="14" height="14" viewBox="0 0 14 14" aria-hidden="true"><path d="M7 1v12M1 7h12" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" fill="none"/></svg>
+                New
+            </button>
         </div>
-    </div>
+    </header>
 
-    <div id="stats-bar">
-        <!-- Populated by JS -->
-    </div>
+    <main>
+        <div>
+            <div class="eyebrow" id="today-label"></div>
+            <h1 class="large-title">Transcripts</h1>
+        </div>
 
-    <div id="search-bar">
-        <input type="search" id="search-input" placeholder="🔍  Search by name, agency, job ID..." oninput="applyFilters()">
-    </div>
+        <div id="stats"></div>
 
-    <div class="table-wrap">
-        <table>
-            <thead>
-                <tr>
-                    <th onclick="sortBy('due_date', this)">Due Date</th>
-                    <th onclick="sortBy('date_taken', this)">Date Taken</th>
-                    <th onclick="sortBy('last_name', this)">Last Name</th>
-                    <th onclick="sortBy('pages', this)" title="Final pages">F-Pgs</th>
-                    <th onclick="sortBy('r_pages', this)" title="Rough pages">R-Pgs</th>
-                    <th onclick="sortBy('job_no', this)">Job No.</th>
-                    <th onclick="sortBy('agency', this)">Agency</th>
-                    <th>Uploads</th>
-                    <th title="Scoped">Sc</th>
-                    <th title="Proofed">Pr</th>
-                    <th title="Final">Fn</th>
-                    <th title="Billed">Bi</th>
-                    <th></th>
-                </tr>
-            </thead>
-            <tbody id="table-body">
-                <tr><td colspan="13" class="loading-state">Loading transcripts...</td></tr>
-            </tbody>
-        </table>
-    </div>
+        <div class="controls">
+            <div class="segmented" role="tablist" aria-label="Filter">
+                <button role="tab" data-tab="active" aria-selected="true" onclick="setTab('active')">Active</button>
+                <button role="tab" data-tab="billed" aria-selected="false" onclick="setTab('billed')">Billed</button>
+                <button role="tab" data-tab="all" aria-selected="false" onclick="setTab('all')">All</button>
+            </div>
+            <label class="search">
+                <svg width="15" height="15" viewBox="0 0 16 16" aria-hidden="true"><circle cx="7" cy="7" r="5.2" stroke="#8E8E93" stroke-width="1.8" fill="none"/><path d="M11 11l3.5 3.5" stroke="#8E8E93" stroke-width="1.8" stroke-linecap="round"/></svg>
+                <span class="sr">Search</span>
+                <input type="search" id="search-input" placeholder="Search name, agency, job no." oninput="applyFilters()">
+            </label>
+        </div>
 
-</div><!-- #app -->
+        <div id="list"><div class="loading">Loading transcripts…</div></div>
+
+        <div class="legend">
+            <span><span class="dot txt" aria-hidden="true"></span>Page count read from transcript TXT</span>
+            <span><span class="dot manual" aria-hidden="true"></span>Page count typed in by hand</span>
+        </div>
+    </main>
+</div>
 
 <!-- ============================================================ -->
-<!-- ADD / EDIT MODAL -->
+<!-- ADD / EDIT SHEET -->
 <!-- ============================================================ -->
-<div id="modal-overlay" class="modal-overlay hidden" onclick="handleOverlayClick(event)">
-    <div class="modal">
-        <div class="modal-handle"></div>
-        <div class="modal-header">
-            <h2 id="modal-title">Add Transcript</h2>
-            <button class="btn-icon" onclick="closeModal()" style="font-size:22px; line-height:1">×</button>
+<div id="modal-overlay" class="overlay hidden" onclick="handleOverlayClick(event)">
+    <div class="sheet" role="dialog" aria-modal="true" aria-labelledby="modal-title">
+        <div class="grabber"></div>
+        <div class="sheet-bar">
+            <button class="bar-btn cancel" onclick="closeModal()">Cancel</button>
+            <h2 id="modal-title">New Transcript</h2>
+            <button class="bar-btn save" onclick="saveTranscript()">Save</button>
         </div>
 
         <input type="hidden" id="modal-id">
 
-        <div class="form-row">
-            <div class="form-group">
-                <label>Last Name *</label>
-                <input type="text" id="modal-last-name" placeholder="Smith" autocapitalize="words">
-            </div>
-            <div class="form-group">
-                <label>Job No.</label>
-                <input type="text" id="modal-job-no" placeholder="e.g. 2024-001" autocapitalize="off" autocorrect="off">
-            </div>
-        </div>
-
-        <div class="form-row">
-            <div class="form-group">
-                <label>Date Taken</label>
-                <input type="date" id="modal-date-taken">
-            </div>
-            <div class="form-group">
-                <label>Due Date</label>
-                <input type="date" id="modal-due-date">
-            </div>
-        </div>
-
-        <div class="form-row">
-            <div class="form-group">
-                <label>F-Pages</label>
-                <input type="number" id="modal-pages" placeholder="0" min="0" inputmode="numeric">
-            </div>
-            <div class="form-group">
-                <label>R-Pages</label>
-                <input type="number" id="modal-r-pages" placeholder="0" min="0" inputmode="numeric">
-            </div>
-        </div>
-
-        <div class="form-row">
-            <div class="form-group">
-                <label>Agency</label>
-                <input type="text" id="modal-agency" placeholder="MRGI, EWU..." list="agency-list" autocomplete="off">
-                <datalist id="agency-list"></datalist>
-            </div>
-        </div>
-
+        <div class="form-hdr">Witness</div>
         <div class="form-group">
-            <label>Notes</label>
-            <textarea id="modal-notes" rows="2" placeholder="Optional notes..."></textarea>
+            <div class="field"><label for="modal-last-name">Last name</label><input type="text" id="modal-last-name" placeholder="Required" autocapitalize="words"></div>
+            <div class="field"><label for="modal-agency">Agency</label><input type="text" id="modal-agency" placeholder="Planet, Golkow…" list="agency-list" autocomplete="off"><datalist id="agency-list"></datalist></div>
+            <div class="field"><label for="modal-job-no">Job no.</label><input type="text" id="modal-job-no" placeholder="Optional" autocapitalize="off" autocorrect="off"></div>
         </div>
 
+        <div class="form-hdr">Dates</div>
         <div class="form-group">
-            <label>Waypoints</label>
-            <div class="waypoints-grid">
-                <div class="waypoint-toggle" id="wp-scoped" onclick="toggleModalWaypoint('scoped')">
-                    <div class="wp-icon"></div>
-                    <div class="wp-label">Scoped</div>
-                </div>
-                <div class="waypoint-toggle" id="wp-proofed" onclick="toggleModalWaypoint('proofed')">
-                    <div class="wp-icon"></div>
-                    <div class="wp-label">Proofed</div>
-                </div>
-                <div class="waypoint-toggle" id="wp-billed" onclick="toggleModalWaypoint('billed')">
-                    <div class="wp-icon"></div>
-                    <div class="wp-label">Billed</div>
-                </div>
-                <div class="waypoint-toggle" id="wp-final" onclick="toggleModalWaypoint('final')">
-                    <div class="wp-icon"></div>
-                    <div class="wp-label">Final</div>
-                </div>
-            </div>
+            <div class="field"><label for="modal-date-taken">Taken</label><input type="date" id="modal-date-taken"></div>
+            <div class="field"><label for="modal-due-date">Due</label><input type="date" id="modal-due-date"></div>
         </div>
 
-        <div class="modal-footer">
-            <button id="delete-btn" class="btn btn-danger hidden" onclick="deleteTranscript()">Delete</button>
-            <div style="flex:1"></div>
-            <button class="btn btn-secondary" onclick="closeModal()">Cancel</button>
-            <button class="btn btn-primary" onclick="saveTranscript()">Save</button>
+        <div class="form-hdr">Pages</div>
+        <div class="form-group">
+            <div class="field"><label for="modal-pages">Final</label><input type="number" id="modal-pages" placeholder="0" min="0" inputmode="numeric"></div>
+            <div class="field"><label for="modal-r-pages">Rough</label><input type="number" id="modal-r-pages" placeholder="0" min="0" inputmode="numeric"></div>
         </div>
+
+        <div class="form-hdr">Progress</div>
+        <div class="form-group">
+            <div class="toggle-row"><span id="lbl-scoped">Scoped</span><span class="switch"><input type="checkbox" id="wp-scoped" aria-labelledby="lbl-scoped"><span class="track"></span><span class="knob"></span></span></div>
+            <div class="toggle-row"><span id="lbl-proofed">Proofed</span><span class="switch"><input type="checkbox" id="wp-proofed" aria-labelledby="lbl-proofed"><span class="track"></span><span class="knob"></span></span></div>
+            <div class="toggle-row"><span id="lbl-final">Final</span><span class="switch"><input type="checkbox" id="wp-final" aria-labelledby="lbl-final"><span class="track"></span><span class="knob"></span></span></div>
+            <div class="toggle-row"><span id="lbl-billed">Billed</span><span class="switch"><input type="checkbox" id="wp-billed" aria-labelledby="lbl-billed"><span class="track"></span><span class="knob"></span></span></div>
+        </div>
+
+        <div class="form-hdr">Notes</div>
+        <div class="form-group">
+            <div class="field notes"><textarea id="modal-notes" rows="2" placeholder="Optional notes" aria-label="Notes"></textarea></div>
+        </div>
+
+        <button id="delete-btn" class="delete-btn hidden" onclick="deleteTranscript()">Delete Transcript</button>
     </div>
 </div>
 
@@ -551,9 +331,12 @@
 let supabaseClient = null;
 let allTranscripts = [];
 let editingId = null;
-let modalWaypoints = { scoped: false, proofed: false, final: false, billed: false };
-let sortField = 'date_taken';
-let sortDir = 'desc';
+let currentTab = 'active';
+try { currentTab = localStorage.getItem('tt_tab') || 'active'; } catch (e) {}
+
+const WAYPOINTS = ['scoped', 'proofed', 'final', 'billed'];
+const CHECK_SVG = '<svg width="12" height="12" viewBox="0 0 12 12" aria-hidden="true"><path d="M2.5 6.3l2.3 2.3L9.6 3.6" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" fill="none"/></svg>';
+const CHEV_SVG  = '<svg class="chev" width="8" height="13" viewBox="0 0 8 13" aria-hidden="true"><path d="M1.5 1.5l5 5-5 5" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" fill="none"/></svg>';
 
 // ============================================================
 // INIT & SETUP
@@ -564,14 +347,16 @@ const DEFAULT_SB_URL = 'https://ykleicberiunmayhvfzi.supabase.co';
 const DEFAULT_SB_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InlrbGVpY2Jlcml1bm1heWh2ZnppIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzU3NDUyNTksImV4cCI6MjA5MTMyMTI1OX0.00thVajBVsAt8iWXc3z5MX1wMu0YI301lSeO1DRhhA4';
 
 function init() {
-    const url = localStorage.getItem('tt_sb_url') || DEFAULT_SB_URL;
-    const key = localStorage.getItem('tt_sb_key') || DEFAULT_SB_KEY;
+    let url = DEFAULT_SB_URL, key = DEFAULT_SB_KEY;
+    try {
+        url = localStorage.getItem('tt_sb_url') || DEFAULT_SB_URL;
+        key = localStorage.getItem('tt_sb_key') || DEFAULT_SB_KEY;
+    } catch (e) {}
 
     if (!url || !key) {
         document.getElementById('setup-screen').classList.remove('hidden');
         return;
     }
-
     connectSupabase(url, key);
 }
 
@@ -579,6 +364,9 @@ function connectSupabase(url, key) {
     supabaseClient = window.supabase.createClient(url, key);
     document.getElementById('setup-screen').classList.add('hidden');
     document.getElementById('app').classList.remove('hidden');
+    document.getElementById('today-label').textContent =
+        new Date().toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' });
+    setTab(currentTab, true);
     loadTranscripts();
     subscribeToChanges();
 }
@@ -586,18 +374,12 @@ function connectSupabase(url, key) {
 function saveSetup() {
     const url = document.getElementById('setup-url').value.trim();
     const key = document.getElementById('setup-key').value.trim();
-
-    if (!url || !key) {
-        alert('Please enter both the Project URL and Anon Key.');
-        return;
-    }
+    if (!url || !key) { alert('Please enter both the Project URL and Anon Key.'); return; }
     if (!url.includes('supabase.co') && !url.includes('supabase.io')) {
         alert('That doesn\'t look like a Supabase URL. It should be: https://xxxx.supabase.co');
         return;
     }
-
-    localStorage.setItem('tt_sb_url', url);
-    localStorage.setItem('tt_sb_key', key);
+    try { localStorage.setItem('tt_sb_url', url); localStorage.setItem('tt_sb_key', key); } catch (e) {}
     connectSupabase(url, key);
 }
 
@@ -605,18 +387,12 @@ function saveSetup() {
 // DATA LOADING
 // ============================================================
 async function loadTranscripts() {
-    document.getElementById('table-body').innerHTML =
-        '<tr><td colspan="13" class="loading-state">Loading...</td></tr>';
-
-    const { data, error } = await supabaseClient
-        .from('transcripts')
-        .select('*')
-        .order(sortField, { ascending: sortDir === 'asc' });
+    const { data, error } = await supabaseClient.from('transcripts').select('*');
 
     if (error) {
         console.error('Load error:', error);
-        document.getElementById('table-body').innerHTML =
-            `<tr><td colspan="13" class="empty-state"><span class="emoji">⚠️</span><p>Error loading data.<br><small>${error.message}</small></p></td></tr>`;
+        document.getElementById('list').innerHTML =
+            `<div class="group"><div class="error">Couldn't load transcripts.<br><small>${esc(error.message)}</small></div></div>`;
         return;
     }
 
@@ -628,233 +404,227 @@ async function loadTranscripts() {
 
 function populateAgencyList() {
     const agencies = [...new Set(allTranscripts.map(t => t.agency).filter(Boolean))].sort();
-    const datalist = document.getElementById('agency-list');
-    if (datalist) {
-        datalist.innerHTML = agencies.map(a => `<option value="${a}">`).join('');
-    }
+    document.getElementById('agency-list').innerHTML = agencies.map(a => `<option value="${esc(a)}">`).join('');
 }
 
 function subscribeToChanges() {
     supabaseClient
         .channel('realtime-changes')
-        .on('postgres_changes', { event: '*', schema: 'public', table: 'transcripts' }, () => {
-            loadTranscripts();
-        })
+        .on('postgres_changes', { event: '*', schema: 'public', table: 'transcripts' }, () => loadTranscripts())
         .subscribe();
 }
+
+// ============================================================
+// HELPERS
+// ============================================================
+function esc(s) {
+    return String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+}
+
+function parseDate(s) { const [y, m, d] = s.split('-').map(Number); return new Date(y, m - 1, d); }
+
+// "Tue 10/20/26" — weekday computed from the date itself
+function formatDate(s) {
+    if (!s) return '—';
+    const d = parseDate(s);
+    const wd = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'][d.getDay()];
+    return `${wd} ${d.getMonth() + 1}/${d.getDate()}/${String(d.getFullYear()).slice(2)}`;
+}
+
+function todayMidnight() { const t = new Date(); t.setHours(0, 0, 0, 0); return t; }
+
+// Same scale as the morning-brief gauges: green ≥4 days, yellow 2–4, orange <2, red due today/overdue
+function dueLevel(days) {
+    if (days == null) return 'lvl-n';
+    if (days <= 0) return 'lvl-r';
+    if (days < 2)  return 'lvl-o';
+    if (days < 4)  return 'lvl-y';
+    return 'lvl-g';
+}
+
+function dotClass(src) { return src === 'txt' ? 'dot txt' : src === 'manual' ? 'dot manual' : 'dot'; }
+
+// Row order (both groups): 1) Due Date soonest first, 2) Date Taken oldest first,
+// 3) Last Name A-Z, natural numbers (Valve-4 before Valve-5 before Valve-10). Blanks last.
+const nameCollator = new Intl.Collator('en', { numeric: true, sensitivity: 'base' });
+const byDateAsc = (x, y) => {
+    if (!x && !y) return 0;
+    if (!x) return 1;
+    if (!y) return -1;
+    return x.localeCompare(y);
+};
+const rowOrder = (a, b) =>
+    byDateAsc(a.due_date, b.due_date) ||
+    byDateAsc(a.date_taken, b.date_taken) ||
+    nameCollator.compare(a.last_name || '', b.last_name || '');
 
 // ============================================================
 // RENDERING
 // ============================================================
 function renderStats() {
-    const t = allTranscripts.filter(x => !x.billed); // active jobs only
-    const total = t.length;
-    const scoped = t.filter(x => x.scoped).length;
-    const proofed = t.filter(x => x.proofed).length;
-    const final_ = t.filter(x => x.final).length;
-    const unbilled = t.filter(x => x.final && !x.billed).length;
+    const active = allTranscripts.filter(t => !t.billed).sort(rowOrder);
+    const pages = active.reduce((n, t) => n + (t.pages || 0), 0);
+    const toProof = active.filter(t => !t.proofed).length;
+    const readyToBill = active.filter(t => t.final).length;
+    const next = active.find(t => t.due_date);
 
-    document.getElementById('stats-bar').innerHTML = `
-        <div class="stat-chip">
-            <span class="stat-num">${total}</span>
-            <span class="stat-lbl">Total</span>
-        </div>
-        <div class="stat-chip">
-            <span class="stat-num">${scoped}</span>
-            <span class="stat-lbl">Scoped</span>
-        </div>
-        <div class="stat-chip">
-            <span class="stat-num">${proofed}</span>
-            <span class="stat-lbl">Proofed</span>
-        </div>
-        <div class="stat-chip">
-            <span class="stat-num">${final_}</span>
-            <span class="stat-lbl">Final</span>
-        </div>
-        <div class="stat-chip" style="${unbilled > 0 ? 'border-color:#FCD34D' : ''}">
-            <span class="stat-num" style="${unbilled > 0 ? 'color:#D97706' : ''}">${unbilled}</span>
-            <span class="stat-lbl">Unbilled</span>
-        </div>
-    `;
+    const cards = [
+        { lbl: 'Active', val: active.length, sub: next ? 'Next due ' + formatDate(next.due_date) : 'Nothing due' },
+        { lbl: 'Pages in progress', val: pages.toLocaleString(), sub: 'Final page count' },
+        { lbl: 'Awaiting proof', val: toProof, sub: toProof ? 'Not yet proofed' : 'All proofed' },
+        { lbl: 'Ready to bill', val: readyToBill, sub: 'Final, not billed', hot: readyToBill > 0 },
+    ];
+    document.getElementById('stats').innerHTML = cards.map(c => `
+        <div class="stat">
+            <div class="stat-lbl">${c.lbl}</div>
+            <div class="stat-val" style="${c.hot ? 'color:var(--tint-text)' : ''}">${c.val}</div>
+            <div class="stat-sub">${c.sub}</div>
+        </div>`).join('');
+}
+
+function setTab(tab, silent) {
+    currentTab = tab;
+    try { localStorage.setItem('tt_tab', tab); } catch (e) {}
+    document.querySelectorAll('.segmented button').forEach(b =>
+        b.setAttribute('aria-selected', b.dataset.tab === tab ? 'true' : 'false'));
+    if (!silent) applyFilters();
 }
 
 function applyFilters() {
     const search = document.getElementById('search-input').value.toLowerCase().trim();
-
     const filtered = allTranscripts.filter(t => !search ||
         (t.last_name || '').toLowerCase().includes(search) ||
         (t.agency    || '').toLowerCase().includes(search) ||
+        (t.job_no    || '').toLowerCase().includes(search) ||
         (t.job_id    || '').toLowerCase().includes(search) ||
         (t.notes     || '').toLowerCase().includes(search)
     );
-
-    renderTable(filtered);
+    renderList(filtered);
 }
 
-function sortBy(field, th) {
-    if (sortField === field) {
-        sortDir = sortDir === 'asc' ? 'desc' : 'asc';
-    } else {
-        sortField = field;
-        sortDir = 'asc';
-    }
-    document.querySelectorAll('th').forEach(t => t.classList.remove('sorted-asc', 'sorted-desc'));
-    th.classList.add(sortDir === 'asc' ? 'sorted-asc' : 'sorted-desc');
-    loadTranscripts();
-}
-
-function renderTable(transcripts) {
-    const tbody = document.getElementById('table-body');
-
-    if (transcripts.length === 0) {
-        tbody.innerHTML = `
-            <tr><td colspan="13" class="empty-state">
-                <span class="emoji">📂</span>
-                <p>No transcripts found.</p>
-            </td></tr>`;
-        return;
-    }
-
-    // Row order (both groups): 1) Due Date soonest first, 2) Date Taken oldest first,
-    // 3) Last Name A-Z, natural numbers (Valve-4 before Valve-5 before Valve-10). Blanks last.
-    const nameCollator = new Intl.Collator('en', { numeric: true, sensitivity: 'base' });
-    const byDateDesc = (x, y) => {
-        if (!x && !y) return 0;
-        if (!x) return 1;
-        if (!y) return -1;
-        return y.localeCompare(x);
-    };
-    const byDateAsc = (x, y) => {
-        if (!x && !y) return 0;
-        if (!x) return 1;
-        if (!y) return -1;
-        return x.localeCompare(y);
-    };
-    const rowOrder = (a, b) =>
-        byDateAsc(a.due_date, b.due_date) ||
-        byDateAsc(a.date_taken, b.date_taken) ||
-        nameCollator.compare(a.last_name || '', b.last_name || '');
-
-    // Active rows first, then billed rows sink below — same ordering in each group
+function renderList(transcripts) {
     const active = transcripts.filter(t => !t.billed).sort(rowOrder);
     const billed = transcripts.filter(t => t.billed).sort(rowOrder);
+    let html = '';
 
-    const ordered = [...active, ...billed];
-
-    const today = new Date(); today.setHours(0,0,0,0);
-    const in3Days = new Date(today); in3Days.setDate(today.getDate() + 3);
-
-    tbody.innerHTML = ordered.map(t => {
-        const due = t.due_date ? new Date(t.due_date + 'T00:00:00') : null;
-        let dueClass = '';
-        let rowClass = t.billed ? 'billed-row' : '';
-
-        if (due && !t.billed) {
-            if (due < today)         { dueClass = 'overdue-text'; rowClass = 'overdue'; }
-            else if (due <= in3Days) { dueClass = 'due-soon'; }
-        }
-
-        const dueText   = t.due_date ? formatDate(t.due_date) : '—';
-        const uploads   = (!t.billed && Array.isArray(t.uploads)) ? t.uploads : []; // hide uploads once billed
-        const rowCount  = Math.max(1, uploads.length);
-        const rs        = rowCount > 1 ? ` rowspan="${rowCount}"` : '';
-
-        // Shared waypoint + action cells (rowspanned)
-        const waypointCells = `
-            <td${rs}><span class="waypoint ${t.scoped  ? 'done':''}" onclick="quickToggle('${t.id}','scoped',${!!t.scoped})"   title="${t.scoped  ? 'Scoped ✓' :'Mark scoped'}"></span></td>
-            <td${rs}><span class="waypoint ${t.proofed ? 'done':''}" onclick="quickToggle('${t.id}','proofed',${!!t.proofed})" title="${t.proofed ? 'Proofed ✓':'Mark proofed'}"></span></td>
-            <td${rs}><span class="waypoint ${t.final   ? 'done':''}" onclick="quickToggle('${t.id}','final',${!!t.final})"     title="${t.final   ? 'Final ✓'  :'Mark final'}"></span></td>
-            <td${rs}><span class="waypoint ${t.billed  ? 'done':''}" onclick="quickToggle('${t.id}','billed',${!!t.billed})"   title="${t.billed  ? 'Billed ✓' :'Mark billed'}"></span></td>
-            <td${rs}><button class="btn-icon" onclick="showEditModal('${t.id}')" title="Edit">✏️</button></td>`;
-
-        // First row — full data + first upload
-        let html = `
-        <tr class="${rowClass}">
-            <td${rs} class="${dueClass}">${dueText}</td>
-            <td${rs}>${t.date_taken ? formatDate(t.date_taken) : '—'}</td>
-            <td${rs}><span class="last-name">${t.last_name || '—'}</span></td>
-            <td${rs} class="${pgsClass(t.pages_src)}">${t.pages ?? '—'}</td>
-            <td${rs} class="${pgsClass(t.r_pages_src)}">${t.r_pages ?? '—'}</td>
-            <td${rs} style="font-size:12px; color:var(--text-muted)">${t.job_no || '—'}</td>
-            <td${rs}>${t.agency || '—'}</td>
-            <td class="upload-cell">${uploads[0] || ''}</td>
-            ${waypointCells}
-        </tr>`;
-
-        // Extra rows — just the additional upload filenames
-        for (let i = 1; i < uploads.length; i++) {
-            html += `<tr class="${rowClass} upload-extra-row"><td class="upload-cell">${uploads[i]}</td></tr>`;
-        }
-
-        return html;
-    }).join('');
+    if (currentTab !== 'billed') {
+        html += `<section>
+            <h2 class="section-hdr">In progress · ${active.length}</h2>
+            <div class="group">${active.length ? active.map(activeCard).join('') : '<div class="empty">No transcripts in progress.</div>'}</div>
+        </section>`;
+    }
+    if (currentTab !== 'active') {
+        html += `<section style="margin-top:${currentTab === 'all' ? '22px' : '0'}">
+            <h2 class="section-hdr">Billed · ${billed.length}</h2>
+            <div class="group">${billed.length ? billed.map(billedRow).join('') : '<div class="empty">No billed transcripts.</div>'}</div>
+        </section>`;
+    }
+    document.getElementById('list').innerHTML = html;
 }
 
-// Page-count source → cell color. 'manual' = typed in the app (red); 'txt' = read from transcript TXT (green)
-function pgsClass(src) {
-    if (src === 'manual') return 'pgs-manual';
-    if (src === 'txt')    return 'pgs-txt';
-    return '';
+function activeCard(t) {
+    const days = t.due_date ? Math.round((parseDate(t.due_date) - todayMidnight()) / 86400000) : null;
+    const lvl = dueLevel(days);
+    let n = '—', u = 'no due', aria = 'No due date';
+    if (days != null) {
+        n = String(Math.abs(days));
+        u = days < 0 ? 'late' : Math.abs(days) === 1 ? 'day' : 'days';
+        aria = days < 0 ? `${-days} days overdue` : days === 0 ? 'Due today' : `${days} days until due`;
+    }
+    const uploads = Array.isArray(t.uploads) ? t.uploads : [];
+    const sub = [t.agency, t.job_no ? 'Job ' + t.job_no : null, t.date_taken ? 'Taken ' + formatDate(t.date_taken) : null]
+        .filter(Boolean).map(esc).join(' · ');
+
+    const steps = WAYPOINTS.map(w => `
+        <button class="step" aria-pressed="${t[w] ? 'true' : 'false'}"
+            onclick="event.stopPropagation(); quickToggle('${t.id}','${w}',${!!t[w]})">${CHECK_SVG}${w[0].toUpperCase() + w.slice(1)}</button>`).join('');
+
+    return `
+    <div class="job" onclick="showEditModal('${t.id}')">
+        <div class="ring ${lvl}" role="img" aria-label="${aria}">
+            <div class="ring-n">${n}</div><div class="ring-u">${u}</div>
+        </div>
+        <div class="job-body">
+            <div class="job-top">
+                <div class="job-name">${esc(t.last_name || '—')}</div>
+                <div class="job-due ${lvl}">${t.due_date ? 'Due ' + formatDate(t.due_date) : 'No due date'}</div>
+            </div>
+            ${sub ? `<div class="job-sub">${sub}</div>` : ''}
+            ${t.notes ? `<div class="job-notes">${esc(t.notes)}</div>` : ''}
+            <div class="job-meta">
+                <span class="pg"><span class="${dotClass(t.pages_src)}" aria-hidden="true"></span>${t.pages ?? '—'} final pgs</span>
+                <span class="pg"><span class="${dotClass(t.r_pages_src)}" aria-hidden="true"></span>${t.r_pages ?? '—'} rough pgs</span>
+                ${uploads.map(x => `<span class="upload">${esc(x)}</span>`).join('')}
+            </div>
+            <div class="steps">${steps}</div>
+        </div>
+    </div>`;
 }
 
-function formatDate(dateStr) {
-    if (!dateStr) return '—';
-    const [y, m, d] = dateStr.split('-');
-    return `${parseInt(m)}/${parseInt(d)}/${y.slice(2)}`;
+// Billed rows: compact, grayed; uploads are hidden once billed
+function billedRow(t) {
+    const sub = [t.agency, t.job_no ? 'Job ' + t.job_no : null, t.date_taken ? 'Taken ' + formatDate(t.date_taken) : null]
+        .filter(Boolean).map(esc).join(' · ');
+    return `
+    <div class="billed" role="button" tabindex="0" onclick="showEditModal('${t.id}')"
+         onkeydown="if(event.key==='Enter')showEditModal('${t.id}')">
+        <div class="billed-check" aria-hidden="true">${CHECK_SVG}</div>
+        <div class="billed-body">
+            <div class="billed-name">${esc(t.last_name || '—')}</div>
+            <div class="billed-sub">${sub}</div>
+        </div>
+        <div class="billed-pgs">${t.pages ?? '—'} pgs</div>
+        ${CHEV_SVG}
+    </div>`;
 }
 
 // ============================================================
-// QUICK WAYPOINT TOGGLE (from table)
+// QUICK WAYPOINT TOGGLE (from list)
 // ============================================================
 async function quickToggle(id, field, currentValue) {
     const newVal = !currentValue;
-    const update = { [field]: newVal };
-    if (newVal) update[field + '_at'] = new Date().toISOString();
-    else update[field + '_at'] = null;
+    const update = { [field]: newVal, [field + '_at']: newVal ? new Date().toISOString() : null };
 
     const { error } = await supabaseClient.from('transcripts').update(update).eq('id', id);
+    if (error) { alert('Update failed: ' + error.message); return; }
 
-    if (!error) {
-        const t = allTranscripts.find(x => x.id === id);
-        if (t) Object.assign(t, update);
-        renderStats();
-        applyFilters();
-    }
+    const t = allTranscripts.find(x => x.id === id);
+    if (t) Object.assign(t, update);
+    renderStats();
+    applyFilters();
 }
 
 // ============================================================
-// MODAL — ADD
+// SHEET — ADD / EDIT
 // ============================================================
+function setModalWaypoints(vals) {
+    WAYPOINTS.forEach(w => { document.getElementById('wp-' + w).checked = !!vals[w]; });
+}
+function getModalWaypoints() {
+    const o = {}; WAYPOINTS.forEach(w => { o[w] = document.getElementById('wp-' + w).checked; }); return o;
+}
+
+function openSheet() {
+    document.getElementById('modal-overlay').classList.remove('hidden');
+    document.body.style.overflow = 'hidden';
+}
+
 function showAddModal() {
     editingId = null;
-    document.getElementById('modal-title').textContent = 'Add Transcript';
-    document.getElementById('modal-id').value = '';
-    document.getElementById('modal-last-name').value = '';
-    document.getElementById('modal-job-no').value = '';
-    document.getElementById('modal-date-taken').value = '';
-    document.getElementById('modal-due-date').value = '';
-    document.getElementById('modal-pages').value = '';
-    document.getElementById('modal-r-pages').value = '';
-    document.getElementById('modal-agency').value = '';
-    document.getElementById('modal-notes').value = '';
+    document.getElementById('modal-title').textContent = 'New Transcript';
+    ['modal-id', 'modal-last-name', 'modal-job-no', 'modal-date-taken', 'modal-due-date',
+     'modal-pages', 'modal-r-pages', 'modal-agency', 'modal-notes'].forEach(id => { document.getElementById(id).value = ''; });
     document.getElementById('delete-btn').classList.add('hidden');
-
-    modalWaypoints = { scoped: false, proofed: false, final: false, billed: false };
-    renderModalWaypoints();
-
-    document.getElementById('modal-overlay').classList.remove('hidden');
+    setModalWaypoints({});
+    openSheet();
     setTimeout(() => document.getElementById('modal-last-name').focus(), 100);
 }
 
-// ============================================================
-// MODAL — EDIT
-// ============================================================
 function showEditModal(id) {
     const t = allTranscripts.find(x => x.id === id);
     if (!t) return;
-
     editingId = id;
-    document.getElementById('modal-title').textContent = 'Edit Transcript';
+    document.getElementById('modal-title').textContent = t.last_name || 'Edit Transcript';
     document.getElementById('modal-id').value = id;
     document.getElementById('modal-last-name').value = t.last_name || '';
     document.getElementById('modal-job-no').value = t.job_no || '';
@@ -865,37 +635,22 @@ function showEditModal(id) {
     document.getElementById('modal-agency').value = t.agency || '';
     document.getElementById('modal-notes').value = t.notes || '';
     document.getElementById('delete-btn').classList.remove('hidden');
-
-    modalWaypoints = {
-        scoped:  !!t.scoped,
-        proofed: !!t.proofed,
-        final:   !!t.final,
-        billed:  !!t.billed
-    };
-    renderModalWaypoints();
-
-    document.getElementById('modal-overlay').classList.remove('hidden');
+    setModalWaypoints(t);
+    openSheet();
 }
 
 function closeModal() {
     document.getElementById('modal-overlay').classList.add('hidden');
+    document.body.style.overflow = '';
 }
 
 function handleOverlayClick(e) {
     if (e.target === document.getElementById('modal-overlay')) closeModal();
 }
 
-function toggleModalWaypoint(field) {
-    modalWaypoints[field] = !modalWaypoints[field];
-    renderModalWaypoints();
-}
-
-function renderModalWaypoints() {
-    ['scoped', 'proofed', 'final', 'billed'].forEach(w => {
-        const el = document.getElementById('wp-' + w);
-        el.classList.toggle('active', !!modalWaypoints[w]);
-    });
-}
+document.addEventListener('keydown', e => {
+    if (e.key === 'Escape' && !document.getElementById('modal-overlay').classList.contains('hidden')) closeModal();
+});
 
 // ============================================================
 // SAVE / DELETE
@@ -908,33 +663,20 @@ async function saveTranscript() {
         return;
     }
 
-    const dateTaken = document.getElementById('modal-date-taken').value;
-
-    // Auto-generate job_id silently for DB use (not shown in UI)
-    let jobId;
-    if (dateTaken) {
-        const d = new Date(dateTaken + 'T00:00:00');
-        const yy = String(d.getFullYear()).slice(2);
-        const mm = String(d.getMonth()+1).padStart(2,'0');
-        const dd = String(d.getDate()).padStart(2,'0');
-        jobId = `${yy}${mm}${dd}-${lastName}`;
-    } else {
-        jobId = `manual-${lastName}-${Date.now()}`;
-    }
-
+    const wp = getModalWaypoints();
     const data = {
         last_name:  lastName,
         job_no:     document.getElementById('modal-job-no').value.trim() || null,
-        date_taken: dateTaken || null,
+        date_taken: document.getElementById('modal-date-taken').value || null,
         due_date:   document.getElementById('modal-due-date').value || null,
         pages:      parseInt(document.getElementById('modal-pages').value) || null,
         r_pages:    parseInt(document.getElementById('modal-r-pages').value) || null,
         agency:     document.getElementById('modal-agency').value.trim() || null,
         notes:      document.getElementById('modal-notes').value.trim() || null,
-        scoped:     modalWaypoints.scoped,
-        proofed:    modalWaypoints.proofed,
-        final:      modalWaypoints.final,
-        billed:     modalWaypoints.billed,
+        scoped:     wp.scoped,
+        proofed:    wp.proofed,
+        final:      wp.final,
+        billed:     wp.billed,
     };
 
     // Page-count provenance: anything typed/changed here is 'manual' (red).
@@ -947,15 +689,16 @@ async function saveTranscript() {
         data.r_pages_src = data.r_pages == null ? null : 'manual';
     }
 
-    // Timestamps for newly checked waypoints
+    // Waypoint timestamps: stamp newly checked, clear unchecked, keep unchanged
     const now = new Date().toISOString();
-    ['scoped','proofed','final','billed'].forEach(w => {
-        data[w + '_at'] = modalWaypoints[w] ? (editingId ? undefined : now) : null;
+    WAYPOINTS.forEach(w => {
+        const was = existing ? !!existing[w] : false;
+        if (wp[w] && !was) data[w + '_at'] = now;
+        else if (!wp[w]) data[w + '_at'] = null;
     });
 
     let error;
     if (editingId) {
-        delete data.scoped_at; delete data.proofed_at; delete data.final_at; delete data.billed_at;
         ({ error } = await supabaseClient.from('transcripts').update(data).eq('id', editingId));
     } else {
         ({ error } = await supabaseClient.from('transcripts').insert(data));
@@ -966,7 +709,6 @@ async function saveTranscript() {
         alert('Save failed: ' + error.message);
         return;
     }
-
     closeModal();
     loadTranscripts();
 }
@@ -978,10 +720,9 @@ async function deleteTranscript() {
     if (!confirm(`Delete ${name}? This cannot be undone.`)) return;
 
     const { error } = await supabaseClient.from('transcripts').delete().eq('id', editingId);
-    if (!error) {
-        closeModal();
-        loadTranscripts();
-    }
+    if (error) { alert('Delete failed: ' + error.message); return; }
+    closeModal();
+    loadTranscripts();
 }
 
 // ============================================================
@@ -991,9 +732,6 @@ if ('serviceWorker' in navigator) {
     navigator.serviceWorker.register('sw.js').catch(e => console.warn('SW:', e));
 }
 
-// ============================================================
-// START
-// ============================================================
 document.addEventListener('DOMContentLoaded', init);
 </script>
 </body>
