@@ -206,6 +206,10 @@
 
         .loading { padding: 40px 16px; text-align: center; color: var(--label4); }
         .error { padding: 28px 16px; text-align: center; color: #D70015; }
+
+        /* Hide password-manager badges (Dashlane overlay / background icon) — no login fields here */
+        [data-dashlanecreated], [data-dashlane-shadowhost], [data-dashlane-label] ~ [data-dashlanecreated] { display: none !important; }
+        .sheet input, .sheet textarea, .search input { background-image: none !important; }
     </style>
 </head>
 <body>
@@ -284,11 +288,11 @@
 
         <input type="hidden" id="modal-id">
 
-        <div class="form-hdr">Witness</div>
+        <div class="form-hdr">Job</div>
         <div class="form-group">
-            <div class="field"><label for="modal-last-name">Last name</label><input type="text" id="modal-last-name" placeholder="Required" autocapitalize="words"></div>
+            <div class="field"><label for="f-wit">Witness</label><input type="text" id="f-wit" name="f-wit" placeholder="Last name (required)" autocapitalize="words" autocomplete="off" data-form-type="other" data-lpignore="true" data-1p-ignore></div>
             <div class="field"><label for="modal-agency">Agency</label><input type="text" id="modal-agency" placeholder="Planet, Golkow…" list="agency-list" autocomplete="off"><datalist id="agency-list"></datalist></div>
-            <div class="field"><label for="modal-job-no">Job no.</label><input type="text" id="modal-job-no" placeholder="Optional" autocapitalize="off" autocorrect="off"></div>
+            <div class="field"><label for="f-ref">Job #</label><input type="text" id="f-ref" name="f-ref" placeholder="Optional" autocapitalize="off" autocorrect="off" autocomplete="off" data-form-type="other" data-lpignore="true" data-1p-ignore></div>
         </div>
 
         <div class="form-hdr">Dates</div>
@@ -624,12 +628,12 @@ function openSheet() {
 function showAddModal() {
     editingId = null;
     document.getElementById('modal-title').textContent = 'New Transcript';
-    ['modal-id', 'modal-last-name', 'modal-job-no', 'modal-date-taken', 'modal-due-date',
+    ['modal-id', 'f-wit', 'f-ref', 'modal-date-taken', 'modal-due-date',
      'modal-pages', 'modal-r-pages', 'modal-agency', 'modal-notes'].forEach(id => { document.getElementById(id).value = ''; });
     document.getElementById('delete-btn').classList.add('hidden');
     setModalWaypoints({});
     openSheet();
-    setTimeout(() => document.getElementById('modal-last-name').focus(), 100);
+    setTimeout(() => document.getElementById('f-wit').focus(), 100);
 }
 
 function showEditModal(id) {
@@ -638,8 +642,8 @@ function showEditModal(id) {
     editingId = id;
     document.getElementById('modal-title').textContent = t.last_name || 'Edit Transcript';
     document.getElementById('modal-id').value = id;
-    document.getElementById('modal-last-name').value = t.last_name || '';
-    document.getElementById('modal-job-no').value = t.job_no || '';
+    document.getElementById('f-wit').value = t.last_name || '';
+    document.getElementById('f-ref').value = t.job_no || '';
     document.getElementById('modal-date-taken').value = t.date_taken || '';
     document.getElementById('modal-due-date').value = t.due_date || '';
     document.getElementById('modal-pages').value = t.pages ?? '';
@@ -668,17 +672,17 @@ document.addEventListener('keydown', e => {
 // SAVE / DELETE
 // ============================================================
 async function saveTranscript() {
-    const lastName = document.getElementById('modal-last-name').value.trim();
+    const lastName = document.getElementById('f-wit').value.trim();
     if (!lastName) {
         alert('Last name is required.');
-        document.getElementById('modal-last-name').focus();
+        document.getElementById('f-wit').focus();
         return;
     }
 
     const wp = getModalWaypoints();
     const data = {
         last_name:  lastName,
-        job_no:     document.getElementById('modal-job-no').value.trim() || null,
+        job_no:     document.getElementById('f-ref').value.trim() || null,
         date_taken: document.getElementById('modal-date-taken').value || null,
         due_date:   document.getElementById('modal-due-date').value || null,
         pages:      parseInt(document.getElementById('modal-pages').value) || null,
