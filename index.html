@@ -511,7 +511,12 @@ function applyFilters() {
 
 function renderList(transcripts) {
     const active = transcripts.filter(t => !t.billed).sort(rowOrder);
-    const billed = transcripts.filter(t => t.billed).sort(rowOrder);
+    // Billed/completed: most recent first (Due Date newest, then Date Taken newest); blanks last
+    const byDateDesc = (x, y) => (!x && !y) ? 0 : !x ? 1 : !y ? -1 : y.localeCompare(x);
+    const billed = transcripts.filter(t => t.billed).sort((a, b) =>
+        byDateDesc(a.due_date, b.due_date) ||
+        byDateDesc(a.date_taken, b.date_taken) ||
+        nameCollator.compare(a.last_name || '', b.last_name || ''));
     let html = '';
 
     if (currentTab !== 'billed') {
